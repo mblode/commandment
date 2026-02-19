@@ -13,6 +13,8 @@ class RecordingCoordinator: ObservableObject {
     private var recordingStartTime: Date?
     private var realtimeManager: RealtimeTranscribing?
     private var delayedStopWork: DispatchWorkItem?
+    private var lastSettingsPromptDate: Date?
+    private let settingsPromptCooldown: TimeInterval = 5
 
     init(
         audioManager: RecordingAudioManaging,
@@ -52,7 +54,7 @@ class RecordingCoordinator: ObservableObject {
         }
 
         guard let apiKey = transcriptionManager.getAPIKey() else {
-            showNoAPIKeyError()
+            handleMissingAPIKeyGuidance()
             return
         }
 
@@ -86,7 +88,12 @@ class RecordingCoordinator: ObservableObject {
                 self.realtimeManager = nil
                 self.audioManager.onAudioChunk = nil
                 self.overlay.dismiss()
-                self.showRecordingError()
+                if self.audioManager.isMicrophonePermissionDenied {
+                    logInfo("RecordingCoordinator: Recording start blocked by missing microphone permission")
+                    self.transcriptionManager.setStatusMessage("Microphone permission is required. Enable it in System Settings > Privacy & Security > Microphone.")
+                } else {
+                    self.showRecordingError()
+                }
             }
         }
     }
@@ -212,7 +219,7 @@ class RecordingCoordinator: ObservableObject {
                 case .failure(let error):
                     self.overlay.dismiss()
                     if case .noAPIKey = error {
-                        self.showNoAPIKeyError()
+                        self.handleMissingAPIKeyGuidance()
                     } else {
                         logError("RecordingCoordinator: Transcription failed: \(error.description)")
                         self.showTranscriptionErrorWithOptions(recordingURL: recordingURL)
@@ -222,18 +229,17 @@ class RecordingCoordinator: ObservableObject {
         }
     }
 
-    private func showNoAPIKeyError() {
-        logInfo("Showing no API key dialog")
-        let alert = NSAlert()
-        alert.messageText = "No API Key"
-        alert.informativeText = "Please add your OpenAI API key in Settings to enable transcription."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open Settings")
-        alert.addButton(withTitle: "Cancel")
+    private func handleMissingAPIKeyGuidance() {
+        transcriptionManager.setStatusMessage("Add your OpenAI API key in Settings to start dictating.")
 
-        if alert.runModal() == .alertFirstButtonReturn {
-            SettingsWindowController.shared.show()
+        let now = Date()
+        if let lastSettingsPromptDate, now.timeIntervalSince(lastSettingsPromptDate) < settingsPromptCooldown {
+            return
         }
+
+        logInfo("RecordingCoordinator: Opening settings to configure missing API key")
+        self.lastSettingsPromptDate = now
+        SettingsWindowController.shared.show()
     }
 
     private func showRecordingError() {
@@ -254,7 +260,6 @@ class RecordingCoordinator: ObservableObject {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Retry")
         alert.addButton(withTitle: "Show in Finder")
-        alert.addButton(withTitle: "View Logs")
         alert.addButton(withTitle: "Cancel")
 
         let response = alert.runModal()
@@ -267,10 +272,6 @@ class RecordingCoordinator: ObservableObject {
         case .alertSecondButtonReturn:
             logInfo("RecordingCoordinator: Showing in Finder: \(recordingURL)")
             NSWorkspace.shared.selectFile(recordingURL.path, inFileViewerRootedAtPath: "")
-
-        case .alertThirdButtonReturn:
-            logInfo("RecordingCoordinator: Opening log file")
-            Logger.shared.openLogFile()
 
         default:
             logInfo("RecordingCoordinator: Transcription error dismissed")

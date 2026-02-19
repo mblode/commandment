@@ -1,5 +1,7 @@
 import Foundation
 import AppKit
+import ApplicationServices
+import Carbon
 
 enum TranscriptionError: Error {
     case networkError(Error)
@@ -80,7 +82,13 @@ class TranscriptionManager: ObservableObject {
     @Published var hasAccessibilityPermission = false
     @Published var statusMessage = ""
     @Published var selectedModel: TranscriptionModel = .gpt4oMiniTranscribe
+    @Published var setupGuideDismissed = false {
+        didSet {
+            UserDefaults.standard.set(setupGuideDismissed, forKey: Self.setupGuideDismissedDefaultsKey)
+        }
+    }
     private var apiKey: String?
+    private static let setupGuideDismissedDefaultsKey = "SetupGuideDismissed"
 
     // Retry configuration
     private let maxRetries = 3
@@ -96,6 +104,7 @@ class TranscriptionManager: ObservableObject {
     }()
 
     init() {
+        setupGuideDismissed = UserDefaults.standard.bool(forKey: Self.setupGuideDismissedDefaultsKey)
         loadAPIKey()
         recheckAccessibilityPermission()
     }
@@ -143,19 +152,70 @@ class TranscriptionManager: ObservableObject {
         return apiKey
     }
 
+    func isAPIKeyConfigured() -> Bool {
+        guard let key = apiKey else { return false }
+        return !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func doesAPIKeyLookValid() -> Bool {
+        guard let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else {
+            return false
+        }
+        return key.hasPrefix("sk-") && key.count >= 20
+    }
+
+    func dismissSetupGuide() {
+        setupGuideDismissed = true
+    }
+
+    func resetSetupGuide() {
+        setupGuideDismissed = false
+    }
+
     // MARK: - Accessibility
 
-    func recheckAccessibilityPermission() {
+    @discardableResult
+    func refreshAccessibilityPermissionState() -> Bool {
         let trusted = AXIsProcessTrusted()
-        DispatchQueue.main.async {
-            self.hasAccessibilityPermission = trusted
+        if Thread.isMainThread {
+            hasAccessibilityPermission = trusted
+        } else {
+            DispatchQueue.main.async {
+                self.hasAccessibilityPermission = trusted
+            }
         }
+        return trusted
+    }
+
+    func recheckAccessibilityPermission() {
+        _ = refreshAccessibilityPermissionState()
+    }
+
+    func openAccessibilitySettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     // MARK: - Transcription with Retry
 
     private func updateStatus(_ message: String) {
         DispatchQueue.main.async { self.statusMessage = message }
+    }
+
+    private func showTransientStatus(_ message: String, duration: TimeInterval = 2.5) {
+        updateStatus(message)
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            guard let self else { return }
+            if self.statusMessage == message && !self.isTranscribing {
+                self.statusMessage = ""
+            }
+        }
+    }
+
+    func setStatusMessage(_ message: String) {
+        updateStatus(message)
     }
 
     func transcribeWithRetry(audioURL: URL, completion: @escaping (Result<String, TranscriptionError>) -> Void) {
@@ -335,51 +395,113 @@ class TranscriptionManager: ObservableObject {
     // MARK: - Text Insertion
 
     func pasteText(_ text: String) {
-        logInfo("Starting text paste operation")
+        let trusted = refreshAccessibilityPermissionState()
 
-        // Recheck permission (may have changed since launch)
-        let trusted = AXIsProcessTrusted()
-        DispatchQueue.main.async {
-            self.hasAccessibilityPermission = trusted
-        }
-
-        if !trusted {
-            logError("No accessibility permission")
-            DispatchQueue.main.async {
-                self.showAccessibilityAlert()
-            }
+        guard trusted else {
+            copyTextToClipboard(text)
+            showTransientStatus("Accessibility permission is required for Auto-Insert. Transcript copied to clipboard.", duration: 4)
+            logError("TranscriptionManager: Auto-insert unavailable without accessibility permission")
             return
         }
 
-        // Use clipboard + ⌘V to avoid AppleScript injection
         let pasteboard = NSPasteboard.general
         let previousContents = snapshotPasteboardItems(from: pasteboard)
+        copyTextToClipboard(text)
+
+        if postCommandV() {
+            logInfo("TranscriptionManager: Auto-inserted transcript via CGEvent")
+            updateStatus("")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.restorePasteboardItems(previousContents, to: pasteboard)
+            }
+        } else {
+            logError("TranscriptionManager: Failed to send auto-insert key events, leaving transcript on clipboard")
+            showTransientStatus("Auto-insert failed. Transcript copied to clipboard.", duration: 4)
+        }
+    }
+
+    private func copyTextToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
+    }
 
-        let script = """
-        tell application "System Events"
-            keystroke "v" using command down
-        end tell
-        """
+    private func postCommandV() -> Bool {
+        guard let keyCode = keyCodeForCurrentLayout(character: "v"),
+              let source = CGEventSource(stateID: .combinedSessionState),
+              let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) else {
+            return false
+        }
 
-        var error: NSDictionary?
-        if let scriptObject = NSAppleScript(source: script) {
-            scriptObject.executeAndReturnError(&error)
-            if let error = error {
-                logError("AppleScript error: \(error)")
-                DispatchQueue.main.async {
-                    self.recheckAccessibilityPermission()
-                }
-            } else {
-                logInfo("Successfully pasted text")
+        keyDown.flags = .maskCommand
+        keyUp.flags = .maskCommand
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+        return true
+    }
+
+    private func keyCodeForCurrentLayout(character: Character) -> CGKeyCode? {
+        guard let inputSource = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+              let rawLayoutData = TISGetInputSourceProperty(inputSource, kTISPropertyUnicodeKeyLayoutData) else {
+            return nil
+        }
+
+        let layoutData = unsafeBitCast(rawLayoutData, to: CFData.self)
+        guard let layoutPtr = CFDataGetBytePtr(layoutData) else {
+            return nil
+        }
+        let keyboardLayout = UnsafePointer<UCKeyboardLayout>(OpaquePointer(layoutPtr))
+        let target = String(character).lowercased()
+
+        for keyCode in UInt16(0)...UInt16(127) {
+            if translatedCharacter(
+                for: keyCode,
+                modifiers: 0,
+                keyboardLayout: keyboardLayout
+            ).lowercased() == target {
+                return CGKeyCode(keyCode)
+            }
+
+            if translatedCharacter(
+                for: keyCode,
+                modifiers: UInt32(shiftKey >> 8),
+                keyboardLayout: keyboardLayout
+            ).lowercased() == target {
+                return CGKeyCode(keyCode)
             }
         }
 
-        // Restore previous clipboard after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.restorePasteboardItems(previousContents, to: pasteboard)
+        return nil
+    }
+
+    private func translatedCharacter(
+        for keyCode: UInt16,
+        modifiers: UInt32,
+        keyboardLayout: UnsafePointer<UCKeyboardLayout>
+    ) -> String {
+        var deadKeyState: UInt32 = 0
+        var characters = [UniChar](repeating: 0, count: 4)
+        var actualLength = 0
+
+        let status = UCKeyTranslate(
+            keyboardLayout,
+            keyCode,
+            UInt16(kUCKeyActionDown),
+            modifiers,
+            UInt32(LMGetKbdType()),
+            OptionBits(kUCKeyTranslateNoDeadKeysMask),
+            &deadKeyState,
+            characters.count,
+            &actualLength,
+            &characters
+        )
+
+        guard status == noErr, actualLength > 0 else {
+            return ""
         }
+
+        return String(utf16CodeUnits: characters, count: actualLength)
     }
 
     private func snapshotPasteboardItems(from pasteboard: NSPasteboard) -> [NSPasteboardItem] {
@@ -409,25 +531,6 @@ class TranscriptionManager: ObservableObject {
 
         if !pasteboard.writeObjects(items) {
             logError("Failed to restore clipboard contents")
-        }
-    }
-
-    // MARK: - Alerts
-
-    private func showAccessibilityAlert() {
-        DispatchQueue.main.async {
-            let alert = NSAlert()
-            alert.messageText = "Permission Required"
-            alert.informativeText = "Commandment needs accessibility permission to simulate keyboard events. Please grant access in System Settings > Privacy & Security > Accessibility, then quit and relaunch Commandment."
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Open System Settings")
-            alert.addButton(withTitle: "Cancel")
-
-            if alert.runModal() == .alertFirstButtonReturn {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
         }
     }
 }

@@ -36,7 +36,7 @@ struct CommandmentApp: App {
         let audio = AudioManager()
         let transcription = TranscriptionManager()
         let hotkey = HotkeyManager()
-        SettingsWindowController.shared.configure(transcriptionManager: transcription)
+        SettingsWindowController.shared.configure(transcriptionManager: transcription, audioManager: audio)
 
         // Initialize coordinator with the same instances
         let coordinator = RecordingCoordinator(
@@ -70,6 +70,7 @@ struct CommandmentApp: App {
         Settings {
             SettingsView()
                 .environmentObject(transcriptionManager)
+                .environmentObject(audioManager)
         }
     }
 

@@ -2,11 +2,16 @@ import Foundation
 
 protocol RecordingAudioManaging: AnyObject {
     var isRecording: Bool { get }
+    var isMicrophonePermissionDenied: Bool { get }
     var onAudioChunk: ((Data) -> Void)? { get set }
 
     func startRecording(completion: ((Bool) -> Void)?)
     func stopRecording() -> URL?
     func convertToM4A(wavURL: URL) async -> URL?
+}
+
+extension RecordingAudioManaging {
+    var isMicrophonePermissionDenied: Bool { false }
 }
 
 extension AudioManager: RecordingAudioManaging {}
@@ -17,6 +22,11 @@ protocol RecordingTranscriptionManaging: AnyObject {
     func getAPIKey() -> String?
     func transcribeWithRetry(audioURL: URL, completion: @escaping (Result<String, TranscriptionError>) -> Void)
     func pasteText(_ text: String)
+    func setStatusMessage(_ message: String)
+}
+
+extension RecordingTranscriptionManaging {
+    func setStatusMessage(_ message: String) {}
 }
 
 extension TranscriptionManager: RecordingTranscriptionManaging {}

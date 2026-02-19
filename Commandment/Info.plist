@@ -4,8 +4,6 @@
 <dict>
     <key>LSUIElement</key>
     <true/>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>Commandment needs to simulate keyboard events to paste transcribed text.</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>Commandment needs accessibility access to simulate keyboard events for pasting.</string>
 </dict>

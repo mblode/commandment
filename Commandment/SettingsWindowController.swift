@@ -6,23 +6,27 @@ final class SettingsWindowController {
     static let shared = SettingsWindowController()
 
     private weak var transcriptionManager: TranscriptionManager?
+    private weak var audioManager: AudioManager?
     private var windowController: NSWindowController?
 
     private init() {}
 
-    func configure(transcriptionManager: TranscriptionManager) {
+    func configure(transcriptionManager: TranscriptionManager, audioManager: AudioManager) {
         self.transcriptionManager = transcriptionManager
+        self.audioManager = audioManager
 
-        if let window = windowController?.window {
+        if let window = windowController?.window, let storedAudioManager = self.audioManager {
             window.contentViewController = NSHostingController(
-                rootView: SettingsView().environmentObject(transcriptionManager)
+                rootView: SettingsView()
+                    .environmentObject(transcriptionManager)
+                    .environmentObject(storedAudioManager)
             )
         }
     }
 
     func show() {
-        guard let transcriptionManager else {
-            logError("SettingsWindowController: Missing TranscriptionManager")
+        guard let transcriptionManager, let audioManager else {
+            logError("SettingsWindowController: Missing managers")
             return
         }
 
@@ -30,7 +34,7 @@ final class SettingsWindowController {
         if let existing = windowController {
             controller = existing
         } else {
-            controller = makeWindowController(transcriptionManager: transcriptionManager)
+            controller = makeWindowController(transcriptionManager: transcriptionManager, audioManager: audioManager)
             windowController = controller
         }
 
@@ -39,13 +43,18 @@ final class SettingsWindowController {
         controller.window?.makeKeyAndOrderFront(nil)
     }
 
-    private func makeWindowController(transcriptionManager: TranscriptionManager) -> NSWindowController {
+    private func makeWindowController(
+        transcriptionManager: TranscriptionManager,
+        audioManager: AudioManager
+    ) -> NSWindowController {
         let hostingController = NSHostingController(
-            rootView: SettingsView().environmentObject(transcriptionManager)
+            rootView: SettingsView()
+                .environmentObject(transcriptionManager)
+                .environmentObject(audioManager)
         )
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 280),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 360),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false

@@ -2,8 +2,35 @@ import Foundation
 import AVFoundation
 import AppKit
 
+enum MicrophonePermissionState: String {
+    case notDetermined
+    case granted
+    case denied
+    case restricted
+
+    var isDenied: Bool {
+        self == .denied || self == .restricted
+    }
+
+    static func from(_ status: AVAuthorizationStatus) -> MicrophonePermissionState {
+        switch status {
+        case .notDetermined:
+            return .notDetermined
+        case .authorized:
+            return .granted
+        case .denied:
+            return .denied
+        case .restricted:
+            return .restricted
+        @unknown default:
+            return .denied
+        }
+    }
+}
+
 class AudioManager: NSObject, ObservableObject {
     @Published var isRecording = false
+    @Published private(set) var microphonePermissionState: MicrophonePermissionState = .notDetermined
     private var audioEngine: AVAudioEngine?
     private var inputNode: AVAudioInputNode?
     private var audioFile: AVAudioFile?
@@ -19,33 +46,61 @@ class AudioManager: NSObject, ObservableObject {
     override init() {
         super.init()
         setupRecordingURL()
-        requestMicrophoneAccess()
+        refreshMicrophonePermissionState()
     }
     
     // MARK: - Audio Recording Setup
     
-    private func requestMicrophoneAccess() {
-        AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-            if granted {
+    func refreshMicrophonePermissionState() {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        let mappedState = MicrophonePermissionState.from(status)
+        if Thread.isMainThread {
+            microphonePermissionState = mappedState
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.microphonePermissionState = mappedState
+            }
+        }
+    }
+
+    var isMicrophonePermissionDenied: Bool {
+        microphonePermissionState.isDenied
+    }
+
+    func openMicrophoneSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
+    func requestMicrophonePermissionIfNeeded(completion: ((Bool) -> Void)? = nil) {
+        ensureMicrophonePermission { granted in
+            completion?(granted)
+        }
+    }
+
+    private func ensureMicrophonePermission(completion: @escaping (Bool) -> Void) {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        microphonePermissionState = MicrophonePermissionState.from(status)
+
+        switch status {
+        case .authorized:
+            completion(true)
+
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
                 DispatchQueue.main.async {
-                    self?.setupAudioEngine()
-                }
-            } else {
-                DispatchQueue.main.async {
-                    let alert = NSAlert()
-                    alert.messageText = "Microphone Access Required"
-                    alert.informativeText = "Commandment needs microphone access to record audio for transcription. Please grant access in System Settings > Privacy & Security > Microphone."
-                    alert.alertStyle = .warning
-                    alert.addButton(withTitle: "Open System Settings")
-                    alert.addButton(withTitle: "Cancel")
-                    
-                    if alert.runModal() == .alertFirstButtonReturn {
-                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
+                    self?.refreshMicrophonePermissionState()
+                    completion(granted)
                 }
             }
+
+        case .denied, .restricted:
+            completion(false)
+
+        @unknown default:
+            completion(false)
         }
     }
     
@@ -195,6 +250,24 @@ class AudioManager: NSObject, ObservableObject {
             return
         }
 
+        ensureMicrophonePermission { [weak self] granted in
+            guard let self = self else {
+                completion?(false)
+                return
+            }
+
+            guard granted else {
+                self.isRecording = false
+                logInfo("AudioManager: Microphone permission not granted")
+                completion?(false)
+                return
+            }
+
+            self.startRecordingAuthorized(completion: completion)
+        }
+    }
+
+    private func startRecordingAuthorized(completion: ((Bool) -> Void)? = nil) {
         logInfo("AudioManager: Starting recording")
         setupAudioEngine()
 

@@ -5,7 +5,7 @@
 <h1 align="center">Commandment</h1>
 
 <p align="center">
-  Voice dictation for macOS. Press a hotkey, speak, and your words appear wherever your cursor is.
+  Voice dictation for macOS. Press a hotkey, speak, and your words are transcribed instantly.
 </p>
 
 <p align="center">
@@ -28,11 +28,14 @@ brew install --cask commandment
 - **Global hotkey** — hold to record, release to transcribe (default: Hyperkey+Y, configurable)
 - **Fast transcription** — powered by OpenAI's gpt-4o-mini-transcribe model
 - **Real-time streaming** — audio streams to OpenAI's Realtime API via WebSocket, with REST fallback
-- **Types anywhere** — inserts transcribed text directly into any app via System Events
+- **Auto-insert output** — transcripts paste directly into the focused app
+- **Clipboard fallback** — if Accessibility isn't granted (or paste fails), transcript is copied to your clipboard
 - **Secure** — API key stored in macOS Keychain, never written to disk in plaintext
 - **Floating overlay** — shows recording, processing, and success states
 - **Menu bar native** — lives in the menu bar with a color-coded status indicator
+- **Guided setup checklist** — first-run steps with “Test now”, skip-for-now, and reset controls
 - **Clipboard preservation** — restores your clipboard after text insertion
+- **Clear permission guidance** — Accessibility is needed for direct insertion into other apps
 - **Reliable** — automatic retry with exponential backoff on network failures
 - **Signed and notarized** — code-signed and notarized by Apple for Gatekeeper
 
@@ -40,9 +43,10 @@ brew install --cask commandment
 
 1. Download the DMG from [Releases](https://github.com/mblode/commandment/releases/latest) and drag Commandment to Applications
 2. Launch Commandment — a microphone icon appears in your menu bar
-3. Click the menu bar icon, open **Settings**, and enter your [OpenAI API key](https://platform.openai.com/api-keys)
-4. Grant **Microphone** and **Accessibility** permissions when prompted
-5. Place your cursor in any text field, hold your hotkey (default: ⌃⌥⇧⌘Y), speak, then release to transcribe
+3. Follow the built-in **Quick setup** checklist (API key -> microphone -> optional auto-insert)
+4. Use **Test now** on each step to verify setup quickly
+5. (Optional) Skip setup steps and come back later from Settings > Setup
+6. Hold your hotkey (default: ⌃⌥⇧⌘Y), speak, then release to transcribe. Commandment auto-inserts when Accessibility is enabled, and falls back to clipboard copy otherwise.
 
 ## Requirements
 
@@ -54,7 +58,7 @@ brew install --cask commandment
 - Your API key is stored in the macOS Keychain, never on disk in plaintext
 - Audio is sent directly to OpenAI's API using your own key — no intermediary servers
 - Temporary audio files are deleted after transcription
-- Accessibility permission is required to simulate keyboard input for text insertion
+- Accessibility permission is required for direct auto-insert into other apps
 - Microphone permission is required for audio capture
 
 ## Building from Source
