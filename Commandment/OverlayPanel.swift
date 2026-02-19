@@ -5,6 +5,7 @@ enum OverlayState: Equatable {
     case recording
     case processing
     case success
+    case copiedToClipboard
     case tooShort
 }
 
@@ -37,8 +38,13 @@ class OverlayPanelController {
         resizePanel()
         panel?.orderFrontRegardless()
 
-        if state == .success || state == .tooShort {
-            let delay: TimeInterval = state == .tooShort ? 2.0 : 1.5
+        if state == .success || state == .tooShort || state == .copiedToClipboard {
+            let delay: TimeInterval
+            switch state {
+            case .tooShort: delay = 2.0
+            case .copiedToClipboard: delay = 2.5
+            default: delay = 1.5
+            }
             dismissTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
                 Task { @MainActor in self?.dismiss() }
             }
@@ -130,6 +136,12 @@ struct OverlayContentView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                 Text("Done")
+                    .foregroundStyle(.primary)
+
+            case .copiedToClipboard:
+                Image(systemName: "doc.on.clipboard.fill")
+                    .foregroundStyle(.blue)
+                Text("Copied to clipboard")
                     .foregroundStyle(.primary)
 
             case .tooShort:

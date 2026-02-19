@@ -9,7 +9,23 @@ struct MenuBarView: View {
         transcriptionManager.getAPIKey() != nil
     }
 
+    private var shouldShowSetupChecklist: Bool {
+        !transcriptionManager.setupGuideDismissed
+    }
+
     var body: some View {
+        if shouldShowSetupChecklist {
+            SetupChecklistView(
+                audioManager: audioManager,
+                transcriptionManager: transcriptionManager
+            )
+        } else {
+            normalMenuContent
+        }
+    }
+
+    @ViewBuilder
+    private var normalMenuContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             statusRow
                 .padding(.horizontal, 12)

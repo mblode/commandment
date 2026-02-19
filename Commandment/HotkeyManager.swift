@@ -3,7 +3,7 @@ import Cocoa
 import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {
-    static let toggleRecording = Self("toggleRecording", default: .init(.y, modifiers: [.control, .option, .shift, .command]))
+    static let toggleRecording = Self("toggleRecording", default: .init(.d, modifiers: [.option]))
 }
 
 @MainActor

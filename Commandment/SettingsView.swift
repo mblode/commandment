@@ -1,5 +1,6 @@
 import SwiftUI
 import KeyboardShortcuts
+import LaunchAtLogin
 
 struct SettingsView: View {
     @EnvironmentObject private var transcriptionManager: TranscriptionManager
@@ -11,22 +12,32 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("API Key") {
-                SecureField("sk-...", text: $apiKey)
+            Section {
+                SecureField("", text: $apiKey, prompt: Text("sk-..."))
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
+                    .labelsHidden()
                     .focused($isAPIKeyFieldFocused)
                     .onSubmit { persistAPIKeyIfNeeded() }
                     .onChange(of: isAPIKeyFieldFocused) { oldValue, newValue in
                         if oldValue && !newValue { persistAPIKeyIfNeeded() }
                     }
 
-                Text("Stored securely in macOS Keychain")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Stored securely in macOS Keychain")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Link("Get API key", destination: URL(string: "https://platform.openai.com/api-keys")!)
+                        .font(.caption)
+                }
+            } header: {
+                Text("OpenAI API Key")
             }
 
-            Section("Shortcut") {
+            Section("General") {
+                LaunchAtLogin.Toggle("Launch at login")
+
                 HStack {
                     Text("Hold to record")
                     Spacer()
@@ -39,7 +50,7 @@ struct SettingsView: View {
                     Text("Microphone")
                     Spacer()
                     if audioManager.microphonePermissionState == .granted {
-                        Label("Granted", systemImage: "checkmark.circle.fill")
+                        Label("Allowed", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                             .font(.callout)
                     } else {
@@ -58,11 +69,11 @@ struct SettingsView: View {
                     }
                     Spacer()
                     if transcriptionManager.hasAccessibilityPermission {
-                        Label("Enabled", systemImage: "checkmark.circle.fill")
+                        Label("Allowed", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                             .font(.callout)
                     } else {
-                        Button("Grant Access") {
+                        Button("Allow") {
                             transcriptionManager.openAccessibilitySettings()
                         }
                     }
@@ -75,7 +86,6 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Link("GitHub", destination: URL(string: "https://github.com/mblode/commandment")!)
-                    Link("Contact", destination: URL(string: "mailto:m@blode.co")!)
                 }
                 .font(.callout)
             }

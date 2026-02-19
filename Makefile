@@ -6,6 +6,7 @@ EXPORT_PATH = $(DERIVED_DATA)/export
 APP_NAME = Commandment
 DMG_PATH = $(DERIVED_DATA)/$(APP_NAME).dmg
 BUNDLE_ID = co.blode.commandment
+VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
 
 CODESIGN_IDENTITY ?= Developer ID Application
 TEAM_ID ?= $(APPLE_TEAM_ID)
@@ -16,6 +17,7 @@ build:
 	xcodebuild -scheme $(SCHEME) \
 		-configuration $(CONFIGURATION) \
 		-derivedDataPath $(DERIVED_DATA) \
+		MARKETING_VERSION=$(VERSION) \
 		build
 
 test:
@@ -23,6 +25,7 @@ test:
 		-configuration Debug \
 		-destination 'platform=macOS' \
 		-derivedDataPath $(DERIVED_DATA) \
+		MARKETING_VERSION=$(VERSION) \
 		test
 
 archive:
@@ -33,6 +36,7 @@ archive:
 		CODE_SIGN_STYLE=Manual \
 		CODE_SIGN_IDENTITY="$(CODESIGN_IDENTITY)" \
 		DEVELOPMENT_TEAM="$(TEAM_ID)" \
+		MARKETING_VERSION=$(VERSION) \
 		archive
 
 export: archive

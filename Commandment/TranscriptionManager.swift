@@ -82,6 +82,9 @@ class TranscriptionManager: ObservableObject {
     @Published var hasAccessibilityPermission = false
     @Published var statusMessage = ""
     @Published var selectedModel: TranscriptionModel = .gpt4oMiniTranscribe
+    @Published var setupGuideDismissed: Bool = UserDefaults.standard.bool(forKey: "setupGuideDismissed") {
+        didSet { UserDefaults.standard.set(setupGuideDismissed, forKey: "setupGuideDismissed") }
+    }
     private var apiKey: String?
 
     // Retry configuration
@@ -162,6 +165,10 @@ class TranscriptionManager: ObservableObject {
 
     func recheckAccessibilityPermission() {
         _ = refreshAccessibilityPermissionState()
+    }
+
+    func resetSetupGuide() {
+        setupGuideDismissed = false
     }
 
     func openAccessibilitySettings() {
@@ -372,8 +379,11 @@ class TranscriptionManager: ObservableObject {
 
         guard trusted else {
             copyTextToClipboard(text)
-            showTransientStatus("Accessibility permission is required for Auto-Insert. Transcript copied to clipboard.", duration: 4)
+            showTransientStatus("Transcript copied to clipboard.", duration: 4)
             logError("TranscriptionManager: Auto-insert unavailable without accessibility permission")
+            DispatchQueue.main.async {
+                OverlayPanelController.shared.show(state: .copiedToClipboard)
+            }
             return
         }
 

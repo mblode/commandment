@@ -23,11 +23,21 @@ jobs:
             -scheme Commandment \
             -derivedDataPath /tmp/commandment-build
 
+      - name: Extract version from tag
+        id: ci-version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo '0.0.0')" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build
         run: |
           xcodebuild -scheme Commandment \
             -configuration Debug \
             -derivedDataPath /tmp/commandment-build \
+            MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             build
 
       - name: Test
@@ -36,6 +46,7 @@ jobs:
             -configuration Debug \
             -destination 'platform=macOS' \
             -derivedDataPath /tmp/commandment-build \
+            MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             test
 
   release:
@@ -71,6 +82,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            MARKETING_VERSION=${{ steps.version.outputs.VERSION }} \
             archive
 
       - name: Export archive

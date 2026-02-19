@@ -8,6 +8,8 @@
   Open-source voice dictation for macOS. Bring your own OpenAI API key.
 </p>
 
+## How it works
+
 - Hold a hotkey, speak, release. Your words appear wherever you're typing
 - Streams audio to OpenAI in real time
 - Auto-inserts text into the focused app
@@ -15,7 +17,7 @@
 
 ## Install
 
-Requires an [OpenAI API key](https://platform.openai.com/api-keys) and macOS 15.2+
+Requires an [OpenAI API key](https://platform.openai.com/api-keys) and macOS
 
 <strong><a href="https://github.com/mblode/commandment/releases/latest">Download the latest release</a></strong>, or:
 

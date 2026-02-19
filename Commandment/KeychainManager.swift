@@ -12,7 +12,8 @@ enum KeychainManager {
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: apiKeyAccount
+            kSecAttrAccount as String: apiKeyAccount,
+            kSecUseDataProtectionKeychain as String: true
         ]
         SecItemDelete(deleteQuery as CFDictionary)
 
@@ -22,7 +23,8 @@ enum KeychainManager {
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyAccount,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked,
+            kSecUseDataProtectionKeychain as String: true
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
@@ -39,7 +41,8 @@ enum KeychainManager {
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyAccount,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseDataProtectionKeychain as String: true
         ]
 
         var result: AnyObject?
@@ -61,7 +64,8 @@ enum KeychainManager {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: apiKeyAccount
+            kSecAttrAccount as String: apiKeyAccount,
+            kSecUseDataProtectionKeychain as String: true
         ]
         let status = SecItemDelete(query as CFDictionary)
         if status == errSecSuccess {
