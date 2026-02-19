@@ -105,9 +105,11 @@ class AudioManager: NSObject, ObservableObject {
     }
     
     private func setupRecordingURL() {
-        let tempPath = URL(fileURLWithPath: "/tmp")
-        recordingURL = tempPath.appendingPathComponent("commandment-recording.wav")
-        try? FileManager.default.removeItem(at: recordingURL!)
+        let tempPath = FileManager.default.temporaryDirectory
+        let url = tempPath.appendingPathComponent("commandment-recording.wav")
+        recordingURL = url
+        try? FileManager.default.removeItem(at: url)
+        logInfo("AudioManager: Recording temp file path set to \(url.path)")
     }
     
     private func setupAudioEngine() {

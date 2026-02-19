@@ -51,6 +51,10 @@ struct MenuBarView: View {
                 SettingsWindowController.shared.show()
             }
 
+            menuButton(icon: "doc.text.magnifyingglass", label: "Show Logs") {
+                Logger.shared.openLogFile()
+            }
+
             Divider()
 
             menuButton(icon: nil, label: "Quit", shortcut: "\u{2318}Q") {

@@ -222,7 +222,7 @@ class RecordingCoordinator: ObservableObject {
                         self.handleMissingAPIKeyGuidance()
                     } else {
                         logError("RecordingCoordinator: Transcription failed: \(error.description)")
-                        self.showTranscriptionErrorWithOptions(recordingURL: recordingURL)
+                        self.showTranscriptionErrorWithOptions(recordingURL: recordingURL, error: error)
                     }
                 }
             }
@@ -251,15 +251,22 @@ class RecordingCoordinator: ObservableObject {
         alert.runModal()
     }
 
-    private func showTranscriptionErrorWithOptions(recordingURL: URL) {
+    private func showTranscriptionErrorWithOptions(recordingURL: URL, error: TranscriptionError) {
         logInfo("Showing transcription error dialog with options")
 
         let alert = NSAlert()
         alert.messageText = "Transcription Error"
-        alert.informativeText = "Failed to transcribe audio after multiple attempts. Please check your API key and internet connection."
+        alert.informativeText = """
+        Failed to transcribe audio after multiple attempts.
+
+        Last error: \(error.description)
+
+        Open logs for full diagnostic details.
+        """
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Retry")
         alert.addButton(withTitle: "Show in Finder")
+        alert.addButton(withTitle: "Show Logs")
         alert.addButton(withTitle: "Cancel")
 
         let response = alert.runModal()
@@ -272,6 +279,10 @@ class RecordingCoordinator: ObservableObject {
         case .alertSecondButtonReturn:
             logInfo("RecordingCoordinator: Showing in Finder: \(recordingURL)")
             NSWorkspace.shared.selectFile(recordingURL.path, inFileViewerRootedAtPath: "")
+
+        case .alertThirdButtonReturn:
+            logInfo("RecordingCoordinator: Opening log file")
+            Logger.shared.openLogFile()
 
         default:
             logInfo("RecordingCoordinator: Transcription error dismissed")

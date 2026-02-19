@@ -17,7 +17,7 @@ macOS menu bar dictation app — BYO OpenAI API key. Swift 5 / SwiftUI + Keyboar
 ## Gotchas
 - Audio is recorded at 24 kHz PCM mono (streamed to Realtime API as PCM16, saved as Float32 WAV)
 - Text insertion uses clipboard + keyboard events. Accessibility permission is required for direct auto-insert; without it, transcripts fall back to clipboard copy
-- Temp audio file is written to `/tmp/commandment-recording.wav` — do not change this path without updating `RecordingCoordinator`
+- Temp audio file is written to `FileManager.default.temporaryDirectory/commandment-recording.wav` to work in sandboxed and non-sandboxed builds. Keep filename stable unless `RecordingCoordinator` fallback logic is updated.
 - The app runs as a menu bar agent (`LSUIElement = true`) — no dock icon or main window. Do not add a `WindowGroup` or `DocumentGroup` scene
 - If UI changes do not appear, you are likely running a stale bundle. Always replace `/Applications/Commandment.app` from `/tmp/commandment-build/Build/Products/Debug/Commandment.app` and relaunch from `/Applications`.
 - Settings window opening is centralized in `SettingsWindowController.shared.show()`; do not use responder-chain selectors like `showSettingsWindow:` for new code paths
