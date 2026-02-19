@@ -1,0 +1,145 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve SPM dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -scheme Commandment \
+            -derivedDataPath /tmp/commandment-build
+
+      - name: Build
+        run: |
+          xcodebuild -scheme Commandment \
+            -configuration Debug \
+            -derivedDataPath /tmp/commandment-build \
+            build
+
+      - name: Test
+        run: |
+          xcodebuild -scheme Commandment \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath /tmp/commandment-build \
+            test
+
+  release:
+    name: Release
+    needs: build-and-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Import code-signing certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          p12-password: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+
+      - name: Resolve SPM dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -scheme Commandment \
+            -derivedDataPath /tmp/commandment-build
+
+      - name: Archive
+        run: |
+          xcodebuild -scheme Commandment \
+            -configuration Release \
+            -derivedDataPath /tmp/commandment-build \
+            -archivePath /tmp/commandment-build/Commandment.xcarchive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            archive
+
+      - name: Export archive
+        run: |
+          cat > /tmp/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>developer-id</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>signingCertificate</key>
+              <string>Developer ID Application</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath /tmp/commandment-build/Commandment.xcarchive \
+            -exportPath /tmp/commandment-build/export \
+            -exportOptionsPlist /tmp/ExportOptions.plist
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Create DMG
+        run: |
+          create-dmg \
+            --volname "Commandment" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 128 \
+            --icon "Commandment.app" 150 190 \
+            --app-drop-link 450 190 \
+            --hide-extension "Commandment.app" \
+            --no-internet-enable \
+            "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg" \
+            "/tmp/commandment-build/export/Commandment.app" \
+          || test -f "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg"
+
+      - name: Notarize DMG
+        uses: lando/notarize-action@v2
+        with:
+          product-path: /tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg
+          appstore-connect-username: ${{ secrets.NOTARIZE_APPLE_ID }}
+          appstore-connect-password: ${{ secrets.NOTARIZE_PASSWORD }}
+          appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Staple notarization ticket
+        run: xcrun stapler staple "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Commandment ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Installation
+
+            1. Download **Commandment-${{ steps.version.outputs.VERSION }}.dmg** below
+            2. Open the DMG and drag Commandment to Applications
+            3. Launch Commandment from Applications
+            4. Click the microphone icon in the menu bar and enter your OpenAI API key in Settings
+            5. Grant microphone and accessibility permissions when prompted
+
+            **Requires macOS 15.2 or later and an OpenAI API key.**
+          files: /tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg
+          draft: false
+          prerelease: false

@@ -1,0 +1,21 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# SPM
+.build/
+Packages/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Build artifacts
+/tmp/commandment-build/
+*.dmg
+
+# Secrets
+.env

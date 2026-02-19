@@ -6,8 +6,19 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		CC000000000000A1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 01607EF32D1883C80006DBE4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 01607EFA2D1883C80006DBE4;
+			remoteInfo = Commandment;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		01607EFB2D1883C80006DBE4 /* Commandment.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Commandment.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC000000000000B1 /* CommandmentTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CommandmentTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -29,10 +40,22 @@
 			path = Commandment;
 			sourceTree = "<group>";
 		};
+		CC000000000000C1 /* CommandmentTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CommandmentTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		01607EF82D1883C80006DBE4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC000000000000D1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -46,6 +69,7 @@
 			isa = PBXGroup;
 			children = (
 				01607EFD2D1883C80006DBE4 /* Commandment */,
+				CC000000000000C1 /* CommandmentTests */,
 				01607EFC2D1883C80006DBE4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				01607EFB2D1883C80006DBE4 /* Commandment.app */,
+				CC000000000000B1 /* CommandmentTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -78,10 +103,32 @@
 			);
 			name = Commandment;
 			packageProductDependencies = (
+				AABB000000000001 /* KeyboardShortcuts */,
 			);
 			productName = Commandment;
 			productReference = 01607EFB2D1883C80006DBE4 /* Commandment.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CC000000000000E1 /* CommandmentTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC000000000000F1 /* Build configuration list for PBXNativeTarget "CommandmentTests" */;
+			buildPhases = (
+				CC000000000000D2 /* Sources */,
+				CC000000000000D1 /* Frameworks */,
+				CC000000000000D3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CC000000000000A2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CC000000000000C1 /* CommandmentTests */,
+			);
+			name = CommandmentTests;
+			productName = CommandmentTests;
+			productReference = CC000000000000B1 /* CommandmentTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -96,6 +143,10 @@
 					01607EFA2D1883C80006DBE4 = {
 						CreatedOnToolsVersion = 16.2;
 					};
+					CC000000000000E1 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 01607EFA2D1883C80006DBE4;
+					};
 				};
 			};
 			buildConfigurationList = 01607EF62D1883C80006DBE4 /* Build configuration list for PBXProject "Commandment" */;
@@ -109,16 +160,27 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 01607EFC2D1883C80006DBE4 /* Products */;
+			packageReferences = (
+				AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				01607EFA2D1883C80006DBE4 /* Commandment */,
+				CC000000000000E1 /* CommandmentTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		01607EF92D1883C80006DBE4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC000000000000D3 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -135,13 +197,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC000000000000D2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CC000000000000A2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 01607EFA2D1883C80006DBE4 /* Commandment */;
+			targetProxy = CC000000000000A1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		01607F082D1883C90006DBE4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -205,6 +283,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -269,7 +348,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Commandment/Info.plist;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2025 Matthew Blode. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 Matthew Blode. All rights reserved.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Commandment needs the microphone to capture your voice for dictation.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -296,7 +375,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Commandment/Info.plist;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2025 Matthew Blode. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 Matthew Blode. All rights reserved.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Commandment needs the microphone to capture your voice for dictation.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -307,6 +386,40 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		CC000000000000F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = co.blode.commandment.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Commandment.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Commandment";
+			};
+			name = Debug;
+		};
+		CC000000000000F3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = co.blode.commandment.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Commandment.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Commandment";
 			};
 			name = Release;
 		};
@@ -331,7 +444,35 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		CC000000000000F1 /* Build configuration list for PBXNativeTarget "CommandmentTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC000000000000F2 /* Debug */,
+				CC000000000000F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AABB000000000001 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 01607EF32D1883C80006DBE4 /* Project object */;
 }

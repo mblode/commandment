@@ -6,29 +6,13 @@
 //
 
 import SwiftUI
-import Cocoa
-
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        logInfo("Application did finish launching")
-        // Just ensure we're not active
-        if NSApp.isActive {
-            NSApp.deactivate()
-        }
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        logInfo("Application will terminate")
-    }
-}
 
 @main
 struct CommandmentApp: App {
-    @StateObject private var audioManager = AudioManager()
-    @StateObject private var hotkeyManager = HotkeyManager()
-    @StateObject private var transcriptionManager = TranscriptionManager()
+    @StateObject private var audioManager: AudioManager
+    @StateObject private var hotkeyManager: HotkeyManager
+    @StateObject private var transcriptionManager: TranscriptionManager
     @StateObject private var coordinator: RecordingCoordinator
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // Initialize Logger early
     private let logger = Logger.shared
@@ -38,8 +22,7 @@ struct CommandmentApp: App {
 
         // Create managers first
         let audio = AudioManager()
-        // Create transcription manager with audio manager reference
-        let transcription = TranscriptionManager(audioManager: audio)
+        let transcription = TranscriptionManager()
         let hotkey = HotkeyManager()
 
         // Initialize coordinator with the same instances
@@ -79,5 +62,10 @@ struct CommandmentApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView()
+                .environmentObject(transcriptionManager)
+        }
     }
 }

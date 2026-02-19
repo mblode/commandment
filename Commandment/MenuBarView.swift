@@ -5,115 +5,127 @@ struct MenuBarView: View {
     @ObservedObject var hotkeyManager: HotkeyManager
     @ObservedObject var transcriptionManager: TranscriptionManager
     @ObservedObject var coordinator: RecordingCoordinator
-    @State private var apiKey: String = UserDefaults.standard.string(forKey: "OpenAIAPIKey") ?? ""
-    
-    init(audioManager: AudioManager, hotkeyManager: HotkeyManager, transcriptionManager: TranscriptionManager, coordinator: RecordingCoordinator) {
-        self.audioManager = audioManager
-        self.hotkeyManager = hotkeyManager
-        self.transcriptionManager = transcriptionManager
-        self.coordinator = coordinator
-    }
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("WhisperDictate")
-                .font(.headline)
-                .padding(.bottom, 5)
-            
-            HStack {
-                Text("Status:")
-                if !transcriptionManager.hasAccessibilityPermission {
-                    Text("Needs Accessibility Permission")
-                        .foregroundColor(.red)
-                } else if audioManager.isRecording {
-                    Text("Recording...")
-                        .foregroundColor(.red)
-                } else if transcriptionManager.isTranscribing {
-                    HStack(spacing: 4) {
-                        if !transcriptionManager.statusMessage.isEmpty {
-                            Text(transcriptionManager.statusMessage)
-                                .foregroundColor(.yellow)
-                        } else {
-                            Text("Transcribing")
-                                .foregroundColor(.yellow)
-                        }
-                        ProgressView()
-                            .scaleEffect(0.5)
-                            .frame(width: 12, height: 12)
-                    }
-                } else if !transcriptionManager.statusMessage.isEmpty {
-                    Text(transcriptionManager.statusMessage)
-                        .foregroundColor(.orange)
-                } else {
-                    Text("Ready")
-                        .foregroundColor(.primary)
-                }
-            }
-            
-            if audioManager.networkStressLevel > 0 {
-                HStack {
-                    Image(systemName: "network")
-                    Text("Network quality: reduced")
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                }
-                .padding(.top, 2)
-            }
-            
-            Divider()
-            
-            VStack(alignment: .leading) {
-                Text("OpenAI API Key:")
-                SecureField("Enter API Key", text: $apiKey)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: apiKey) { oldValue, newValue in
-                        transcriptionManager.setAPIKey(newValue)
-                        logInfo("API Key updated")
-                    }
-            }
-            .padding(.vertical, 5)
-            
-            if !transcriptionManager.hasAccessibilityPermission {
-                Text("⚠️ Accessibility permission required")
-                    .font(.caption)
-                    .foregroundColor(.red)
-                Button("Open System Settings") {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                        NSWorkspace.shared.open(url)
-                        logInfo("Opening Accessibility settings")
-                    }
-                }
-                .padding(.bottom, 5)
-            }
-            
-            Text("Press Option+D to start/stop recording")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            Divider()
-            
-            HStack {
-                Button(action: {
-                    logInfo("Viewing application logs")
-                    Logger.shared.openLogFile()
-                }) {
-                    HStack {
-                        Image(systemName: "doc.text.magnifyingglass")
-                        Text("View Logs")
-                    }
-                }
-                
+        VStack(alignment: .leading, spacing: 8) {
+            // Status row
+            HStack(spacing: 6) {
+                statusDot
+                statusText
                 Spacer()
-                
-                Button(action: {
-                    logInfo("User initiated app quit")
-                    NSApplication.shared.terminate(nil)
-                }) {
-                    Text("Quit")
+                if transcriptionManager.isTranscribing {
+                    ProgressView()
+                        .controlSize(.small)
                 }
+            }
+
+            Divider()
+
+            // Shortcut hint
+            HStack(spacing: 4) {
+                Image(systemName: "keyboard")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                Text(hotkeyManager.shortcutDisplay)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                Text("to record")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Divider()
+
+            // Actions
+            Button {
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            } label: {
+                HStack {
+                    Image(systemName: "gearshape")
+                    Text("Settings...")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                Logger.shared.openLogFile()
+            } label: {
+                HStack {
+                    Image(systemName: "doc.text.magnifyingglass")
+                    Text("View Logs")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                HStack {
+                    Text("Quit Commandment")
+                    Spacer()
+                    Text("\u{2318}Q")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .frame(width: 240)
+    }
+
+    // MARK: - Status Components
+
+    @ViewBuilder
+    private var statusDot: some View {
+        Circle()
+            .fill(statusColor)
+            .frame(width: 8, height: 8)
+    }
+
+    private var statusColor: Color {
+        if !transcriptionManager.hasAccessibilityPermission {
+            return .red
+        } else if audioManager.isRecording {
+            return .red
+        } else if transcriptionManager.isTranscribing {
+            return .yellow
+        } else if !transcriptionManager.statusMessage.isEmpty {
+            return .orange
+        } else {
+            return .green
+        }
+    }
+
+    private var statusText: some View {
+        Group {
+            if !transcriptionManager.hasAccessibilityPermission {
+                Text("Needs Permission")
+                    .foregroundStyle(.red)
+            } else if audioManager.isRecording {
+                Text("Recording...")
+                    .foregroundStyle(.primary)
+            } else if transcriptionManager.isTranscribing {
+                if !transcriptionManager.statusMessage.isEmpty {
+                    Text(transcriptionManager.statusMessage)
+                        .foregroundStyle(.primary)
+                } else {
+                    Text("Transcribing...")
+                        .foregroundStyle(.primary)
+                }
+            } else if !transcriptionManager.statusMessage.isEmpty {
+                Text(transcriptionManager.statusMessage)
+                    .foregroundStyle(.orange)
+            } else {
+                Text("Ready")
+                    .foregroundStyle(.primary)
             }
         }
-        .padding()
-        .frame(width: 250)
+        .font(.callout.weight(.medium))
     }
 }

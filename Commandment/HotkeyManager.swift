@@ -1,115 +1,57 @@
 import Foundation
-import Carbon
 import Cocoa
+import KeyboardShortcuts
 
+extension KeyboardShortcuts.Name {
+    static let toggleRecording = Self("toggleRecording", default: .init(.y, modifiers: [.control, .option, .shift, .command]))
+}
+
+@MainActor
 class HotkeyManager: ObservableObject {
-    private var eventHandler: EventHandlerRef?
-    private var hotKeyRef: EventHotKeyRef?
-    
+    @Published var shortcutDisplay: String = ""
+    private var shortcutChangeObserver: NSObjectProtocol?
+
     init() {
         logInfo("HotkeyManager: Initializing")
-        setupHotkey()
-        
-        // Register for workspace notifications to handle sleep/wake
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(handleWake),
-            name: NSWorkspace.didWakeNotification,
-            object: nil
-        )
-    }
-    
-    private func setupHotkey() {
-        // Clean up any existing handlers
-        cleanupHotkey()
-        
-        var gMyHotKeyID = EventHotKeyID()
-        
-        // Convert four-char code to OSType using Unicode scalars
-        let fourCharCode = "htk1"
-        let scalars = fourCharCode.unicodeScalars
-        let signature = (UInt32(scalars[scalars.startIndex].value) << 24) |
-                       (UInt32(scalars[scalars.index(after: scalars.startIndex)].value) << 16) |
-                       (UInt32(scalars[scalars.index(scalars.startIndex, offsetBy: 2)].value) << 8) |
-                       UInt32(scalars[scalars.index(scalars.startIndex, offsetBy: 3)].value)
-        
-        gMyHotKeyID.signature = FourCharCode(signature)
-        gMyHotKeyID.id = UInt32(1)
-        
-        // Install handler
-        var eventType = EventTypeSpec()
-        eventType.eventClass = OSType(kEventClassKeyboard)
-        eventType.eventKind = OSType(kEventHotKeyPressed)
-        
-        let status = InstallEventHandler(
-            GetApplicationEventTarget(),
-            { (_, inEvent, _) -> OSStatus in
-                var hotKeyID = EventHotKeyID()
-                GetEventParameter(inEvent,
-                                UInt32(kEventParamDirectObject),
-                                UInt32(typeEventHotKeyID),
-                                nil,
-                                MemoryLayout<EventHotKeyID>.size,
-                                nil,
-                                &hotKeyID)
-                
-                if hotKeyID.id == 1 {
-                    DispatchQueue.main.async {
-                        logDebug("HotkeyManager: Hotkey pressed")
-                        NotificationCenter.default.post(name: NSNotification.Name("HotkeyPressed"), object: nil)
-                    }
-                }
-                return noErr
-            },
-            1,
-            &eventType,
-            nil,
-            &eventHandler
-        )
-        
-        if status != noErr {
-            logError("HotkeyManager: Failed to install event handler")
-            return
-        }
-        
-        // Register Option+D as the hotkey (D = 0x02)
-        let registerStatus = RegisterEventHotKey(
-            UInt32(kVK_ANSI_D),
-            UInt32(optionKey),
-            gMyHotKeyID,
-            GetApplicationEventTarget(),
-            0,
-            &hotKeyRef
-        )
-        
-        if registerStatus != noErr {
-            logError("HotkeyManager: Failed to register hotkey")
-        } else {
-            logInfo("HotkeyManager: Successfully registered Option+D hotkey")
+        updateShortcutDisplay()
+        observeShortcutChanges()
+
+        KeyboardShortcuts.onKeyDown(for: .toggleRecording) {
+            logDebug("HotkeyManager: Hotkey pressed")
+            NotificationCenter.default.post(name: NSNotification.Name("HotkeyPressed"), object: nil)
         }
     }
-    
-    private func cleanupHotkey() {
-        logDebug("HotkeyManager: Cleaning up hotkey resources")
-        if let hotKeyRef = hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
-        }
-        
-        if let eventHandler = eventHandler {
-            RemoveEventHandler(eventHandler)
-            self.eventHandler = nil
-        }
-    }
-    
-    @objc private func handleWake() {
-        logInfo("HotkeyManager: System woke from sleep, reinstalling hotkey")
-        setupHotkey()
-    }
-    
+
     deinit {
-        logInfo("HotkeyManager: Deinitializing")
-        cleanupHotkey()
-        NSWorkspace.shared.notificationCenter.removeObserver(self)
+        if let shortcutChangeObserver {
+            NotificationCenter.default.removeObserver(shortcutChangeObserver)
+        }
+    }
+
+    private func observeShortcutChanges() {
+        shortcutChangeObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name("KeyboardShortcuts_shortcutByNameDidChange"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard
+                let name = notification.userInfo?["name"] as? KeyboardShortcuts.Name,
+                name == .toggleRecording
+            else {
+                return
+            }
+
+            Task { @MainActor [weak self] in
+                self?.updateShortcutDisplay()
+            }
+        }
+    }
+
+    func updateShortcutDisplay() {
+        if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecording) {
+            shortcutDisplay = shortcut.description
+        } else {
+            shortcutDisplay = "Not set"
+        }
     }
 }
