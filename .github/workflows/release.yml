@@ -37,6 +37,8 @@ jobs:
           xcodebuild -scheme Commandment \
             -configuration Debug \
             -derivedDataPath /tmp/commandment-build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
             MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             build
 
@@ -46,6 +48,8 @@ jobs:
             -configuration Debug \
             -destination 'platform=macOS' \
             -derivedDataPath /tmp/commandment-build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
             MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             test
 
