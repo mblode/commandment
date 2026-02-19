@@ -7,6 +7,7 @@ macOS menu bar dictation app — BYO OpenAI API key. Swift 5 / SwiftUI + Keyboar
 - `xcodebuild -scheme Commandment -configuration Debug build -derivedDataPath /tmp/commandment-build` — Build from CLI
 - `xcodebuild -scheme Commandment -configuration Release build -derivedDataPath /tmp/commandment-build` — Release build
 - `xcodebuild -scheme Commandment -configuration Debug -destination 'platform=macOS' test -derivedDataPath /tmp/commandment-build` — Run tests
+- `xcodebuild -scheme Commandment -configuration Debug build -derivedDataPath /tmp/commandment-build && (pkill -x Commandment || true) && rsync -a --delete /tmp/commandment-build/Build/Products/Debug/Commandment.app/ /Applications/Commandment.app/ && open /Applications/Commandment.app` — Build, replace installed app, relaunch (avoids stale bundle)
 
 ## Setup
 - Requires Xcode 16+ and macOS 15.2+ SDK
@@ -14,10 +15,12 @@ macOS menu bar dictation app — BYO OpenAI API key. Swift 5 / SwiftUI + Keyboar
 - API key (OpenAI) stored in macOS Keychain, configured via Settings window
 
 ## Gotchas
-- Audio is recorded at 16 kHz PCM mono
+- Audio is recorded at 24 kHz PCM mono (streamed to Realtime API as PCM16, saved as Float32 WAV)
 - Text insertion uses AppleScript/System Events — the app requires Accessibility permission in System Settings > Privacy & Security > Accessibility. Without it, transcribed text will not be inserted
 - Temp audio file is written to `/tmp/commandment-recording.wav` — do not change this path without updating `RecordingCoordinator`
 - The app runs as a menu bar agent (`LSUIElement = true`) — no dock icon or main window. Do not add a `WindowGroup` or `DocumentGroup` scene
+- If UI changes do not appear, you are likely running a stale bundle. Always replace `/Applications/Commandment.app` from `/tmp/commandment-build/Build/Products/Debug/Commandment.app` and relaunch from `/Applications`.
+- Settings window opening is centralized in `SettingsWindowController.shared.show()`; do not use responder-chain selectors like `showSettingsWindow:` for new code paths
 - HotkeyManager is `@MainActor` — removing this will cause KeyboardShortcuts crashes on background threads
 - Settings changes propagate via `@EnvironmentObject` (`TranscriptionManager`) — do not replace with NotificationCenter
 - Default transcription model is `gpt-4o-mini-transcribe` — configured in `TranscriptionManager`

@@ -17,8 +17,13 @@ class HotkeyManager: ObservableObject {
         observeShortcutChanges()
 
         KeyboardShortcuts.onKeyDown(for: .toggleRecording) {
-            logDebug("HotkeyManager: Hotkey pressed")
-            NotificationCenter.default.post(name: NSNotification.Name("HotkeyPressed"), object: nil)
+            logDebug("HotkeyManager: Hotkey key down")
+            NotificationCenter.default.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
+        }
+
+        KeyboardShortcuts.onKeyUp(for: .toggleRecording) {
+            logDebug("HotkeyManager: Hotkey key up")
+            NotificationCenter.default.post(name: NSNotification.Name("HotkeyKeyUp"), object: nil)
         }
     }
 
@@ -49,7 +54,14 @@ class HotkeyManager: ObservableObject {
 
     func updateShortcutDisplay() {
         if let shortcut = KeyboardShortcuts.getShortcut(for: .toggleRecording) {
-            shortcutDisplay = shortcut.description
+            let raw = shortcut.description
+            // Replace all four modifier symbols with ✦ (Hyper Key)
+            let allModifiers = "\u{2303}\u{2325}\u{21E7}\u{2318}" // ⌃⌥⇧⌘
+            if raw.hasPrefix(allModifiers) {
+                shortcutDisplay = "✦" + raw.dropFirst(allModifiers.count)
+            } else {
+                shortcutDisplay = raw
+            }
         } else {
             shortcutDisplay = "Not set"
         }

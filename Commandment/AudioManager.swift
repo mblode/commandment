@@ -11,6 +11,10 @@ class AudioManager: NSObject, ObservableObject {
     private var converter: AVAudioConverter?
     private var volumeMeter: AVAudioMixerNode?
     private let audioQueue = DispatchQueue(label: "co.blode.commandment.audio")
+    private var _isRecordingOnAudioQueue = false
+
+    /// Called with PCM16 (Int16) audio chunks at 24kHz mono during recording
+    var onAudioChunk: ((Data) -> Void)?
 
     override init() {
         super.init()
@@ -72,8 +76,13 @@ class AudioManager: NSObject, ObservableObject {
         audioEngine.attach(volumeMeter)
         
         let inputFormat = inputNode.inputFormat(forBus: 0)
+        guard inputFormat.channelCount > 0, inputFormat.sampleRate > 0 else {
+            logError("AudioManager: Invalid input format: \(inputFormat)")
+            return
+        }
+
         let whisperFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                        sampleRate: 16000,
+                                        sampleRate: 24000,
                                         channels: 1,
                                         interleaved: false)!
         
@@ -85,10 +94,12 @@ class AudioManager: NSObject, ObservableObject {
         audioEngine.prepare()
 
         volumeMeter.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] (buffer, time) in
+            // Capture callback on the audio thread to avoid racing with main-thread writes
+            let onChunk = self?.onAudioChunk
             self?.audioQueue.async { [weak self] in
                 guard let self = self,
                       let recordingURL = self.recordingURL,
-                      self.isRecording else { return }
+                      self._isRecordingOnAudioQueue else { return }
 
                 var convertedBuffer: AVAudioPCMBuffer?
                 
@@ -97,13 +108,19 @@ class AudioManager: NSObject, ObservableObject {
                 }
                 
                 if let converter = self.converter {
-                    let frameCount = AVAudioFrameCount(Float(buffer.frameLength) * Float(16000) / Float(inputFormat.sampleRate))
+                    let frameCount = AVAudioFrameCount(Float(buffer.frameLength) * Float(24000) / Float(inputFormat.sampleRate))
                     convertedBuffer = AVAudioPCMBuffer(pcmFormat: whisperFormat,
                                                      frameCapacity: frameCount)
                     convertedBuffer?.frameLength = frameCount
                     
                     var error: NSError?
+                    var consumed = false
                     let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+                        if consumed {
+                            outStatus.pointee = .noDataNow
+                            return nil
+                        }
+                        consumed = true
                         outStatus.pointee = .haveData
                         return buffer
                     }
@@ -138,6 +155,21 @@ class AudioManager: NSObject, ObservableObject {
                 } catch {
                     logError("AudioManager: Failed to write buffer: \(error)")
                 }
+
+                // Stream PCM16 chunks for Realtime API
+                if let onChunk,
+                   let floatData = finalBuffer.floatChannelData?[0] {
+                    let frameCount = Int(finalBuffer.frameLength)
+                    var pcm16Data = Data(count: frameCount * 2)
+                    pcm16Data.withUnsafeMutableBytes { rawBuffer in
+                        let int16Buffer = rawBuffer.bindMemory(to: Int16.self)
+                        for i in 0..<frameCount {
+                            let sample = max(-1.0, min(1.0, floatData[i]))
+                            int16Buffer[i] = Int16(sample * 32767)
+                        }
+                    }
+                    onChunk(pcm16Data)
+                }
             }
         }
     }
@@ -156,17 +188,22 @@ class AudioManager: NSObject, ObservableObject {
     // MARK: - Recording Control
     
     func startRecording(completion: ((Bool) -> Void)? = nil) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.startRecording(completion: completion)
+            }
+            return
+        }
+
         logInfo("AudioManager: Starting recording")
+        setupAudioEngine()
+
         audioQueue.async { [weak self] in
             guard let self = self else { return }
-            
-            // Make sure we have a fresh audio engine setup
-            DispatchQueue.main.sync {
-                self.setupAudioEngine()
-            }
-            
+
             guard let audioEngine = self.audioEngine else {
                 logError("AudioManager: No audio engine available")
+                self._isRecordingOnAudioQueue = false
                 DispatchQueue.main.async {
                     completion?(false)
                 }
@@ -177,6 +214,7 @@ class AudioManager: NSObject, ObservableObject {
             self.audioFile = nil
             
             do {
+                self._isRecordingOnAudioQueue = true
                 try audioEngine.start()
                 DispatchQueue.main.async {
                     self.isRecording = true
@@ -184,6 +222,7 @@ class AudioManager: NSObject, ObservableObject {
                 }
                 logInfo("AudioManager: Recording started successfully")
             } catch {
+                self._isRecordingOnAudioQueue = false
                 logError("AudioManager: Failed to start recording: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion?(false)
@@ -198,24 +237,21 @@ class AudioManager: NSObject, ObservableObject {
             logError("AudioManager: No recording URL available")
             return nil
         }
-        
+
         // First mark as not recording to prevent new audio data from being processed
         isRecording = false
-        
-        // Synchronously stop audio processing and close file
+
+        // Synchronously stop audio processing and release file resources
         audioQueue.sync { [weak self] in
+            self?._isRecordingOnAudioQueue = false
             logInfo("AudioManager: Stopping audio engine and cleaning up")
             self?.audioEngine?.stop()
             self?.volumeMeter?.removeTap(onBus: 0)
-            // Close the audio file explicitly
-            if let audioFile = self?.audioFile {
-                audioFile.close()
-            }
             self?.audioFile = nil
             // Clean up the engine for next recording
             self?.cleanupAudioEngine()
         }
-        
+
         // Verify the file exists before returning
         if FileManager.default.fileExists(atPath: recordingURL.path) {
             logInfo("AudioManager: Recording saved successfully at \(recordingURL)")
@@ -223,5 +259,29 @@ class AudioManager: NSObject, ObservableObject {
         }
         logError("AudioManager: Recording file not found at \(recordingURL)")
         return nil
+    }
+
+    // MARK: - M4A Compression
+
+    func convertToM4A(wavURL: URL) async -> URL? {
+        let m4aURL = wavURL.deletingPathExtension().appendingPathExtension("m4a")
+        try? FileManager.default.removeItem(at: m4aURL)
+
+        let asset = AVURLAsset(url: wavURL)
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            logError("AudioManager: Failed to create export session")
+            return nil
+        }
+
+        do {
+            try await exportSession.export(to: m4aURL, as: .m4a)
+            let wavSize = (try? FileManager.default.attributesOfItem(atPath: wavURL.path)[.size] as? Int64) ?? 0
+            let m4aSize = (try? FileManager.default.attributesOfItem(atPath: m4aURL.path)[.size] as? Int64) ?? 0
+            logInfo("AudioManager: Compressed \(wavSize) bytes WAV → \(m4aSize) bytes M4A (\(m4aSize > 0 ? Int(100 - (m4aSize * 100 / wavSize)) : 0)% smaller)")
+            return m4aURL
+        } catch {
+            logError("AudioManager: M4A export failed: \(error.localizedDescription)")
+            return nil
+        }
     }
 }

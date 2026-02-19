@@ -5,6 +5,7 @@ enum OverlayState: Equatable {
     case recording
     case processing
     case success
+    case tooShort
 }
 
 @MainActor
@@ -33,10 +34,12 @@ class OverlayPanelController {
         }
 
         hostingView?.rootView = OverlayContentView(state: state)
+        resizePanel()
         panel?.orderFrontRegardless()
 
-        if state == .success {
-            dismissTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+        if state == .success || state == .tooShort {
+            let delay: TimeInterval = state == .tooShort ? 2.0 : 1.5
+            dismissTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
                 Task { @MainActor in self?.dismiss() }
             }
         }
@@ -50,10 +53,15 @@ class OverlayPanelController {
     private func createPanel() {
         let contentView = OverlayContentView(state: currentState)
         let hosting = NSHostingView(rootView: contentView)
-        hosting.frame = NSRect(x: 0, y: 0, width: 200, height: 44)
+
+        let idealSize = hosting.fittingSize
+        let panelWidth = max(idealSize.width, 120)
+        let panelHeight = max(idealSize.height, 44)
+
+        hosting.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 200, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -70,13 +78,32 @@ class OverlayPanelController {
 
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame
-            let x = screenFrame.midX - 100
+            let x = screenFrame.midX - (panelWidth / 2)
             let y = screenFrame.minY + 80
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
 
         self.panel = panel
         self.hostingView = hosting
+    }
+
+    private func resizePanel() {
+        guard let hosting = hostingView, let panel = panel else { return }
+
+        let idealSize = hosting.fittingSize
+        let panelWidth = max(idealSize.width, 120)
+        let panelHeight = max(idealSize.height, 44)
+
+        hosting.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+
+        if let screen = NSScreen.main {
+            let screenFrame = screen.visibleFrame
+            let x = screenFrame.midX - (panelWidth / 2)
+            let y = screenFrame.minY + 80
+            panel.setFrame(NSRect(x: x, y: y, width: panelWidth, height: panelHeight), display: true, animate: false)
+        } else {
+            panel.setContentSize(NSSize(width: panelWidth, height: panelHeight))
+        }
     }
 }
 
@@ -104,11 +131,18 @@ struct OverlayContentView: View {
                     .foregroundStyle(.green)
                 Text("Done")
                     .foregroundStyle(.primary)
+
+            case .tooShort:
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.orange)
+                Text("Too short")
+                    .foregroundStyle(.primary)
             }
         }
         .font(.system(size: 13, weight: .medium))
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.ultraThinMaterial, in: Capsule())
+        .fixedSize()
     }
 }

@@ -15,9 +15,9 @@ final class TranscriptionRequestTests: XCTestCase {
 
     func test_containsModelParameter() {
         let body = TranscriptionManager.buildMultipartBody(
-            audioData: sampleAudio, boundary: boundary, model: .whisper1)
+            audioData: sampleAudio, boundary: boundary, model: .gpt4oMiniTranscribe)
         let bodyString = String(data: body, encoding: .utf8)!
-        XCTAssertTrue(bodyString.contains("whisper-1"))
+        XCTAssertTrue(bodyString.contains("gpt-4o-mini-transcribe"))
     }
 
     func test_containsTemperatureParameter() {

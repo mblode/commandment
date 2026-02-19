@@ -26,7 +26,9 @@ enum KeychainManager {
         ]
 
         let status = SecItemAdd(addQuery as CFDictionary, nil)
-        if status != errSecSuccess {
+        if status == errSecSuccess {
+            logInfo("KeychainManager: API key saved to keychain")
+        } else {
             logError("KeychainManager: Failed to save API key (status: \(status))")
         }
     }
@@ -44,6 +46,11 @@ enum KeychainManager {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         guard status == errSecSuccess, let data = result as? Data else {
+            if status == errSecItemNotFound {
+                logDebug("KeychainManager: No API key found in keychain")
+            } else {
+                logError("KeychainManager: Failed to load API key (status: \(status))")
+            }
             return nil
         }
 
@@ -56,6 +63,11 @@ enum KeychainManager {
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyAccount
         ]
-        SecItemDelete(query as CFDictionary)
+        let status = SecItemDelete(query as CFDictionary)
+        if status == errSecSuccess {
+            logInfo("KeychainManager: API key deleted from keychain")
+        } else if status != errSecItemNotFound {
+            logError("KeychainManager: Failed to delete API key (status: \(status))")
+        }
     }
 }

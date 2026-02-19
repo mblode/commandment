@@ -30,7 +30,7 @@ struct GeneralSettingsView: View {
         Form {
             Section {
                 HStack {
-                    Text("Toggle Recording:")
+                    Text("Hold to record:")
                     Spacer()
                     KeyboardShortcuts.Recorder("", name: .toggleRecording)
                 }
@@ -38,11 +38,9 @@ struct GeneralSettingsView: View {
                 HStack {
                     Text("Default:")
                         .foregroundStyle(.secondary)
-                        .font(.caption)
                     Spacer()
-                    Text("\u{2303}\u{2325}\u{21E7}\u{2318}Y")
+                    Text("✦Y")
                         .foregroundStyle(.secondary)
-                        .font(.caption)
                 }
             }
         }
@@ -55,14 +53,13 @@ struct GeneralSettingsView: View {
 struct APISettingsView: View {
     @EnvironmentObject var transcriptionManager: TranscriptionManager
     @State private var apiKey: String = ""
-    @State private var selectedModel: TranscriptionModel = .gpt4oMiniTranscribe
 
     var body: some View {
         Form {
             Section {
                 SecureField("OpenAI API Key", text: $apiKey)
                     .onChange(of: apiKey) { _, newValue in
-                        saveAPIKey(newValue)
+                        transcriptionManager.setAPIKey(newValue)
                     }
 
                 Text("Stored securely in macOS Keychain")
@@ -71,30 +68,18 @@ struct APISettingsView: View {
             }
 
             Section {
-                Picker("Model", selection: $selectedModel) {
-                    ForEach(TranscriptionModel.allCases, id: \.self) { model in
-                        Text(model.displayName).tag(model)
-                    }
-                }
-                .onChange(of: selectedModel) { _, newValue in
-                    transcriptionManager.setModel(newValue)
+                HStack {
+                    Text("Model")
+                    Spacer()
+                    Text(TranscriptionModel.gpt4oMiniTranscribe.displayName)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
         .formStyle(.grouped)
         .onAppear {
             apiKey = transcriptionManager.getAPIKey() ?? ""
-            selectedModel = transcriptionManager.selectedModel
         }
-    }
-
-    private func saveAPIKey(_ key: String) {
-        if key.isEmpty {
-            KeychainManager.deleteAPIKey()
-        } else {
-            KeychainManager.saveAPIKey(key)
-        }
-        transcriptionManager.setAPIKey(key)
     }
 }
 

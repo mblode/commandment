@@ -16,7 +16,7 @@ brew install --cask commandment
 ## Features
 
 - Global hotkey (default: Hyperkey+Y) — configurable in Settings
-- Fast transcription via gpt-4o-mini-transcribe (or gpt-4o-transcribe / whisper-1)
+- Fast transcription via gpt-4o-mini-transcribe
 - Types text directly into any app via System Events
 - API key stored securely in macOS Keychain
 - Floating overlay showing recording/processing/success states

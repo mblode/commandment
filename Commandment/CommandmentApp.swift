@@ -24,6 +24,7 @@ struct CommandmentApp: App {
         let audio = AudioManager()
         let transcription = TranscriptionManager()
         let hotkey = HotkeyManager()
+        SettingsWindowController.shared.configure(transcriptionManager: transcription)
 
         // Initialize coordinator with the same instances
         let coordinator = RecordingCoordinator(
@@ -51,14 +52,15 @@ struct CommandmentApp: App {
                        coordinator: coordinator)
         } label: {
             if audioManager.isRecording {
-                Image(systemName: "record.circle.fill")
-                    .symbolRenderingMode(.multicolor)
+                Image(systemName: "mic.badge.xmark.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.red, .primary)
             } else if transcriptionManager.isTranscribing {
-                Image(systemName: "arrow.triangle.2.circlepath.circle")
-                    .symbolRenderingMode(.multicolor)
-                    .foregroundStyle(.yellow)
+                Image(systemName: "mic.fill.badge.plus")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.primary, .yellow)
             } else {
-                Image(systemName: "mic.circle")
+                Image(systemName: "mic.fill")
             }
         }
         .menuBarExtraStyle(.window)

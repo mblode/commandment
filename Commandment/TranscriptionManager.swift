@@ -34,16 +34,13 @@ enum TranscriptionError: Error {
 
 enum TranscriptionModel: String, CaseIterable, Codable {
     case gpt4oMiniTranscribe = "gpt-4o-mini-transcribe"
-    case gpt4oTranscribe = "gpt-4o-transcribe"
-    case whisper1 = "whisper-1"
 
     var displayName: String {
-        switch self {
-        case .gpt4oMiniTranscribe: return "GPT-4o Mini Transcribe"
-        case .gpt4oTranscribe: return "GPT-4o Transcribe"
-        case .whisper1: return "Whisper-1 (Legacy)"
-        }
+        "GPT-4o Mini Transcribe"
     }
+
+    /// Model ID to use with the Realtime API
+    var realtimeModelID: String { rawValue }
 }
 
 class TranscriptionManager: ObservableObject {
@@ -57,12 +54,16 @@ class TranscriptionManager: ObservableObject {
     static func buildMultipartBody(
         audioData: Data,
         boundary: String,
-        model: TranscriptionModel
+        model: TranscriptionModel,
+        isM4A: Bool = false
     ) -> Data {
+        let filename = isM4A ? "recording.m4a" : "recording.wav"
+        let contentType = isM4A ? "audio/mp4" : "audio/wav"
+
         var data = Data()
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"recording.wav\"\r\n".data(using: .utf8)!)
-        data.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        data.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
         data.append(audioData)
         data.append("\r\n".data(using: .utf8)!)
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -85,18 +86,34 @@ class TranscriptionManager: ObservableObject {
     private let maxRetries = 3
     private let requestTimeout: TimeInterval = 15.0
 
+    // Persistent session for connection reuse (TLS session resumption, HTTP/2 multiplexing)
+    private lazy var session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = requestTimeout
+        config.timeoutIntervalForResource = requestTimeout * 2
+        config.waitsForConnectivity = true
+        return URLSession(configuration: config)
+    }()
+
     init() {
         loadAPIKey()
-        loadModel()
-        checkAccessibilityPermission()
+        recheckAccessibilityPermission()
     }
 
     // MARK: - API Key (Keychain)
 
     private func loadAPIKey() {
+        // XCTest host startup can block indefinitely on keychain IPC.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            apiKey = nil
+            logInfo("TranscriptionManager: Skipping keychain load in test environment")
+            return
+        }
+
         // Try Keychain first
         if let keychainKey = KeychainManager.loadAPIKey() {
             apiKey = keychainKey
+            logInfo("TranscriptionManager: API key loaded from keychain")
             return
         }
 
@@ -106,41 +123,32 @@ class TranscriptionManager: ObservableObject {
             apiKey = legacyKey
             KeychainManager.saveAPIKey(legacyKey)
             UserDefaults.standard.removeObject(forKey: "OpenAIAPIKey")
+            return
         }
+
+        logInfo("TranscriptionManager: No API key configured")
     }
 
     func setAPIKey(_ key: String) {
-        apiKey = key
-        KeychainManager.saveAPIKey(key)
+        if key.isEmpty {
+            apiKey = nil
+            KeychainManager.deleteAPIKey()
+        } else {
+            apiKey = key
+            KeychainManager.saveAPIKey(key)
+        }
     }
 
     func getAPIKey() -> String? {
         return apiKey
     }
 
-    // MARK: - Model Selection
-
-    private func loadModel() {
-        if let modelRaw = UserDefaults.standard.string(forKey: "TranscriptionModel"),
-           let model = TranscriptionModel(rawValue: modelRaw) {
-            selectedModel = model
-        }
-    }
-
-    func setModel(_ model: TranscriptionModel) {
-        selectedModel = model
-        UserDefaults.standard.set(model.rawValue, forKey: "TranscriptionModel")
-    }
-
     // MARK: - Accessibility
 
-    private func checkAccessibilityPermission() {
+    func recheckAccessibilityPermission() {
         let trusted = AXIsProcessTrusted()
         DispatchQueue.main.async {
             self.hasAccessibilityPermission = trusted
-            if !trusted {
-                self.showAccessibilityAlert()
-            }
         }
     }
 
@@ -150,7 +158,7 @@ class TranscriptionManager: ObservableObject {
         DispatchQueue.main.async { self.statusMessage = message }
     }
 
-    func transcribeWithRetry(audioURL: URL, completion: @escaping (String?) -> Void) {
+    func transcribeWithRetry(audioURL: URL, completion: @escaping (Result<String, TranscriptionError>) -> Void) {
         var currentRetry = 0
         updateStatus("Starting transcription...")
 
@@ -165,10 +173,24 @@ class TranscriptionManager: ObservableObject {
                 switch result {
                 case .success(let text):
                     self.updateStatus("")
-                    completion(text)
+                    completion(.success(text))
 
                 case .failure(let error):
                     logError("Transcription attempt \(currentRetry + 1) failed: \(error.description)")
+
+                    // Don't retry errors that won't resolve themselves
+                    switch error {
+                    case .noAPIKey, .fileError:
+                        self.updateStatus("")
+                        completion(.failure(error))
+                        return
+                    case .apiError(let code, _) where code == 401 || code == 403:
+                        self.updateStatus("")
+                        completion(.failure(error))
+                        return
+                    default:
+                        break
+                    }
 
                     if currentRetry < self.maxRetries {
                         currentRetry += 1
@@ -182,7 +204,7 @@ class TranscriptionManager: ObservableObject {
                     } else {
                         self.updateStatus("")
                         logError("Transcription failed after \(self.maxRetries + 1) attempts")
-                        completion(nil)
+                        completion(.failure(error))
                     }
                 }
             }
@@ -226,25 +248,18 @@ class TranscriptionManager: ObservableObject {
             return
         }
 
+        let isM4A = audioURL.pathExtension.lowercased() == "m4a"
         request.httpBody = TranscriptionManager.buildMultipartBody(
             audioData: audioData,
             boundary: boundary,
-            model: selectedModel
+            model: selectedModel,
+            isM4A: isM4A
         )
-
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = requestTimeout
-        config.timeoutIntervalForResource = requestTimeout * 2
-        config.waitsForConnectivity = true
-
-        let session = URLSession(configuration: config)
 
         session.dataTask(with: request) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 self?.isTranscribing = false
             }
-
-            session.finishTasksAndInvalidate()
 
             if let error = error {
                 let nsError = error as NSError
@@ -322,7 +337,13 @@ class TranscriptionManager: ObservableObject {
     func pasteText(_ text: String) {
         logInfo("Starting text paste operation")
 
-        if !AXIsProcessTrusted() {
+        // Recheck permission (may have changed since launch)
+        let trusted = AXIsProcessTrusted()
+        DispatchQueue.main.async {
+            self.hasAccessibilityPermission = trusted
+        }
+
+        if !trusted {
             logError("No accessibility permission")
             DispatchQueue.main.async {
                 self.showAccessibilityAlert()
@@ -348,7 +369,7 @@ class TranscriptionManager: ObservableObject {
             if let error = error {
                 logError("AppleScript error: \(error)")
                 DispatchQueue.main.async {
-                    self.checkAccessibilityPermission()
+                    self.recheckAccessibilityPermission()
                 }
             } else {
                 logInfo("Successfully pasted text")

@@ -6,18 +6,26 @@ struct MenuBarView: View {
     @ObservedObject var transcriptionManager: TranscriptionManager
     @ObservedObject var coordinator: RecordingCoordinator
 
+    @State private var apiKeyInput: String = ""
+
+    private var hasAPIKey: Bool {
+        transcriptionManager.getAPIKey() != nil
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             // Status row
-            HStack(spacing: 6) {
-                statusDot
-                statusText
-                Spacer()
-                if transcriptionManager.isTranscribing {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
+            statusRow
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+
+            Divider()
+
+            // API key
+            apiKeySection
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
 
             Divider()
 
@@ -25,68 +33,105 @@ struct MenuBarView: View {
             HStack(spacing: 4) {
                 Image(systemName: "keyboard")
                     .foregroundStyle(.secondary)
-                    .font(.caption)
                 Text(hotkeyManager.shortcutDisplay)
-                    .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
                 Text("to record")
-                    .font(.caption)
                     .foregroundStyle(.tertiary)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
 
             Divider()
 
             // Actions
-            Button {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            } label: {
-                HStack {
-                    Image(systemName: "gearshape")
-                    Text("Settings...")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            menuButton(icon: "gearshape", label: "Settings...", shortcut: "\u{2318},") {
+                SettingsWindowController.shared.show()
             }
-            .buttonStyle(.plain)
 
-            Button {
+            menuButton(icon: "doc.text.magnifyingglass", label: "View Logs") {
                 Logger.shared.openLogFile()
-            } label: {
-                HStack {
-                    Image(systemName: "doc.text.magnifyingglass")
-                    Text("View Logs")
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
 
             Divider()
 
-            Button {
+            menuButton(icon: nil, label: "Quit", shortcut: "\u{2318}Q") {
                 NSApplication.shared.terminate(nil)
-            } label: {
-                HStack {
-                    Text("Quit Commandment")
-                    Spacer()
-                    Text("\u{2318}Q")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
         }
-        .padding(12)
-        .frame(width: 240)
+        .font(.system(size: 13))
+        .frame(width: 260)
+        .onAppear {
+            transcriptionManager.recheckAccessibilityPermission()
+        }
     }
 
-    // MARK: - Status Components
+    // MARK: - Sections
 
-    @ViewBuilder
-    private var statusDot: some View {
-        Circle()
-            .fill(statusColor)
-            .frame(width: 8, height: 8)
+    private var statusRow: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+            statusText
+            Spacer()
+            if transcriptionManager.isTranscribing {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
     }
+
+    private var apiKeySection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("API key")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if hasAPIKey {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .accessibilityLabel("API key configured")
+                }
+            }
+            SecureField("sk-...", text: $apiKeyInput)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(.body, design: .monospaced))
+                .accessibilityLabel("OpenAI API key")
+                .onAppear {
+                    apiKeyInput = transcriptionManager.getAPIKey() ?? ""
+                }
+                .onSubmit {
+                    transcriptionManager.setAPIKey(apiKeyInput)
+                }
+        }
+    }
+
+    // MARK: - Reusable Menu Button
+
+    private func menuButton(icon: String?, label: String, shortcut: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                if let icon {
+                    Image(systemName: icon)
+                        .frame(width: 16)
+                }
+                Text(label)
+                if let shortcut {
+                    Spacer()
+                    Text(shortcut)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Status
 
     private var statusColor: Color {
         if !transcriptionManager.hasAccessibilityPermission {
@@ -95,6 +140,8 @@ struct MenuBarView: View {
             return .red
         } else if transcriptionManager.isTranscribing {
             return .yellow
+        } else if !hasAPIKey {
+            return .orange
         } else if !transcriptionManager.statusMessage.isEmpty {
             return .orange
         } else {
@@ -105,8 +152,13 @@ struct MenuBarView: View {
     private var statusText: some View {
         Group {
             if !transcriptionManager.hasAccessibilityPermission {
-                Text("Needs Permission")
-                    .foregroundStyle(.red)
+                Button("Needs permission") {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
             } else if audioManager.isRecording {
                 Text("Recording...")
                     .foregroundStyle(.primary)
@@ -118,6 +170,9 @@ struct MenuBarView: View {
                     Text("Transcribing...")
                         .foregroundStyle(.primary)
                 }
+            } else if !hasAPIKey {
+                Text("Add API key")
+                    .foregroundStyle(.orange)
             } else if !transcriptionManager.statusMessage.isEmpty {
                 Text(transcriptionManager.statusMessage)
                     .foregroundStyle(.orange)
@@ -126,6 +181,21 @@ struct MenuBarView: View {
                     .foregroundStyle(.primary)
             }
         }
-        .font(.callout.weight(.medium))
+        .fontWeight(.medium)
+        .accessibilityLabel(statusAccessibilityLabel)
+    }
+
+    private var statusAccessibilityLabel: String {
+        if !transcriptionManager.hasAccessibilityPermission {
+            return "Needs accessibility permission. Activate to open System Settings."
+        } else if audioManager.isRecording {
+            return "Recording audio"
+        } else if transcriptionManager.isTranscribing {
+            return "Transcribing audio"
+        } else if !hasAPIKey {
+            return "No API key configured"
+        } else {
+            return "Ready to record"
+        }
     }
 }
