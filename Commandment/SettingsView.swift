@@ -9,8 +9,6 @@ struct SettingsView: View {
     @State private var apiKey: String = ""
     @FocusState private var isAPIKeyFieldFocused: Bool
 
-    private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-
     var body: some View {
         Form {
             Section {
@@ -106,7 +104,7 @@ struct SettingsView: View {
 
             Section {
                 HStack {
-                    Text("Commandment v\(appVersion)")
+                    Text("Commandment")
                         .foregroundStyle(.secondary)
                     Spacer()
                     Link("GitHub", destination: URL(string: "https://github.com/mblode/commandment")!)
