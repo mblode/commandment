@@ -139,24 +139,73 @@ struct MenuBarView: View {
     // MARK: - Menu Button
 
     private func menuButton(icon: String?, label: String, shortcut: String? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
+        MenuBarRowButton(icon: icon, label: label, shortcut: shortcut, action: action)
+    }
+
+    private struct MenuBarRowButton: View {
+        let icon: String?
+        let label: String
+        let shortcut: String?
+        let action: () -> Void
+
+        private enum Metrics {
+            static let rowHeight: CGFloat = 24
+            static let horizontalInset: CGFloat = 12
+            static let iconColumnWidth: CGFloat = 18
+            static let iconSize: CGFloat = 16
+            static let contentSpacing: CGFloat = 8
+            static let shortcutMinWidth: CGFloat = 40
+        }
+
+        @State private var isHovering = false
+
+        private var rowBackgroundColor: Color {
+            isHovering ? Color(nsColor: .selectedContentBackgroundColor) : .clear
+        }
+
+        private var rowForegroundColor: Color {
+            isHovering ? Color(nsColor: .selectedMenuItemTextColor) : .primary
+        }
+
+        private var shortcutForegroundColor: Color {
+            isHovering ? Color(nsColor: .selectedMenuItemTextColor) : .secondary
+        }
+
+        private var iconColumn: some View {
+            Group {
                 if let icon {
                     Image(systemName: icon)
-                        .frame(width: 16)
-                }
-                Text(label)
-                if let shortcut {
-                    Spacer()
-                    Text(shortcut)
-                        .foregroundStyle(.secondary)
+                        .frame(width: Metrics.iconSize, height: Metrics.iconSize)
+                } else {
+                    Color.clear
+                        .frame(width: Metrics.iconSize, height: Metrics.iconSize)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
+            .frame(width: Metrics.iconColumnWidth, alignment: .center)
         }
-        .buttonStyle(.plain)
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: Metrics.contentSpacing) {
+                    iconColumn
+                    Text(label)
+                        .lineLimit(1)
+                    if let shortcut {
+                        Spacer(minLength: 0)
+                        Text(shortcut)
+                            .lineLimit(1)
+                            .frame(minWidth: Metrics.shortcutMinWidth, alignment: .trailing)
+                            .foregroundStyle(shortcutForegroundColor)
+                    }
+                }
+                .padding(.horizontal, Metrics.horizontalInset)
+                .frame(maxWidth: .infinity, minHeight: Metrics.rowHeight, maxHeight: Metrics.rowHeight, alignment: .leading)
+                .contentShape(Rectangle())
+                .foregroundStyle(rowForegroundColor)
+                .background(rowBackgroundColor)
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovering = $0 }
+        }
     }
 }
