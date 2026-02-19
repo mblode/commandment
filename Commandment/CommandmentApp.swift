@@ -60,8 +60,7 @@ struct CommandmentApp: App {
         MenuBarExtra {
             MenuBarView(audioManager: audioManager,
                        hotkeyManager: hotkeyManager,
-                       transcriptionManager: transcriptionManager,
-                       coordinator: coordinator)
+                       transcriptionManager: transcriptionManager)
         } label: {
             menuBarIcon
         }

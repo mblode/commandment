@@ -143,3 +143,46 @@ jobs:
           files: /tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg
           draft: false
           prerelease: false
+
+      - name: Compute DMG SHA256
+        id: sha
+        run: echo "SHA256=$(shasum -a 256 /tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Update Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          SHA256="${{ steps.sha.outputs.SHA256 }}"
+
+          # Generate cask file
+          cat > /tmp/commandment.rb << EOF
+          cask "commandment" do
+            version "${VERSION}"
+            sha256 "${SHA256}"
+
+            url "https://github.com/mblode/commandment/releases/download/v#{version}/Commandment-#{version}.dmg"
+            name "Commandment"
+            desc "macOS menu bar dictation app using OpenAI transcription"
+            homepage "https://github.com/mblode/commandment"
+
+            depends_on macos: ">= :sequoia"
+
+            app "Commandment.app"
+
+            zap trash: [
+              "~/Library/Preferences/co.blode.commandment.plist",
+              "~/Library/Application Support/co.blode.commandment",
+            ]
+          end
+          EOF
+
+          # Get current file SHA from tap repo
+          FILE_SHA=$(gh api repos/mblode/homebrew-tap/contents/Casks/commandment.rb --jq '.sha')
+
+          # Push updated cask
+          gh api repos/mblode/homebrew-tap/contents/Casks/commandment.rb \
+            -X PUT \
+            -f message="Update commandment to ${VERSION}" \
+            -f content="$(base64 < /tmp/commandment.rb)" \
+            -f sha="${FILE_SHA}"

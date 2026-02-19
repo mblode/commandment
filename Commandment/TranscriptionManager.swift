@@ -82,13 +82,7 @@ class TranscriptionManager: ObservableObject {
     @Published var hasAccessibilityPermission = false
     @Published var statusMessage = ""
     @Published var selectedModel: TranscriptionModel = .gpt4oMiniTranscribe
-    @Published var setupGuideDismissed = false {
-        didSet {
-            UserDefaults.standard.set(setupGuideDismissed, forKey: Self.setupGuideDismissedDefaultsKey)
-        }
-    }
     private var apiKey: String?
-    private static let setupGuideDismissedDefaultsKey = "SetupGuideDismissed"
 
     // Retry configuration
     private let maxRetries = 3
@@ -104,7 +98,6 @@ class TranscriptionManager: ObservableObject {
     }()
 
     init() {
-        setupGuideDismissed = UserDefaults.standard.bool(forKey: Self.setupGuideDismissedDefaultsKey)
         loadAPIKey()
         recheckAccessibilityPermission()
     }
@@ -150,26 +143,6 @@ class TranscriptionManager: ObservableObject {
 
     func getAPIKey() -> String? {
         return apiKey
-    }
-
-    func isAPIKeyConfigured() -> Bool {
-        guard let key = apiKey else { return false }
-        return !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    func doesAPIKeyLookValid() -> Bool {
-        guard let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else {
-            return false
-        }
-        return key.hasPrefix("sk-") && key.count >= 20
-    }
-
-    func dismissSetupGuide() {
-        setupGuideDismissed = true
-    }
-
-    func resetSetupGuide() {
-        setupGuideDismissed = false
     }
 
     // MARK: - Accessibility
