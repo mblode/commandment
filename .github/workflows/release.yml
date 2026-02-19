@@ -116,12 +116,12 @@ jobs:
           || test -f "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg"
 
       - name: Notarize DMG
-        uses: lando/notarize-action@v2
-        with:
-          product-path: /tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg
-          appstore-connect-username: ${{ secrets.NOTARIZE_APPLE_ID }}
-          appstore-connect-password: ${{ secrets.NOTARIZE_PASSWORD }}
-          appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg" \
+            --apple-id "${{ secrets.NOTARIZE_APPLE_ID }}" \
+            --password "${{ secrets.NOTARIZE_PASSWORD }}" \
+            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --wait
 
       - name: Staple notarization ticket
         run: xcrun stapler staple "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg"
