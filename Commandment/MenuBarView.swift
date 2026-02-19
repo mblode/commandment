@@ -4,6 +4,7 @@ struct MenuBarView: View {
     @ObservedObject var audioManager: AudioManager
     @ObservedObject var hotkeyManager: HotkeyManager
     @ObservedObject var transcriptionManager: TranscriptionManager
+    @ObservedObject var updateManager: UpdateManager
 
     private var hasAPIKey: Bool {
         transcriptionManager.getAPIKey() != nil
@@ -55,9 +56,17 @@ struct MenuBarView: View {
                 Logger.shared.openLogFile()
             }
 
+            menuButton(
+                icon: "arrow.triangle.2.circlepath",
+                label: "Check for Updates...",
+                isEnabled: updateManager.canCheckForUpdates
+            ) {
+                updateManager.checkForUpdates()
+            }
+
             Divider()
 
-            menuButton(icon: nil, label: "Quit", shortcut: "\u{2318}Q") {
+            menuButton(icon: "xmark", label: "Quit", shortcut: "\u{2318}Q") {
                 NSApplication.shared.terminate(nil)
             }
         }
@@ -138,14 +147,27 @@ struct MenuBarView: View {
 
     // MARK: - Menu Button
 
-    private func menuButton(icon: String?, label: String, shortcut: String? = nil, action: @escaping () -> Void) -> some View {
-        MenuBarRowButton(icon: icon, label: label, shortcut: shortcut, action: action)
+    private func menuButton(
+        icon: String?,
+        label: String,
+        shortcut: String? = nil,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
+        MenuBarRowButton(
+            icon: icon,
+            label: label,
+            shortcut: shortcut,
+            isEnabled: isEnabled,
+            action: action
+        )
     }
 
     private struct MenuBarRowButton: View {
         let icon: String?
         let label: String
         let shortcut: String?
+        let isEnabled: Bool
         let action: () -> Void
 
         private enum Metrics {
@@ -160,15 +182,21 @@ struct MenuBarView: View {
         @State private var isHovering = false
 
         private var rowBackgroundColor: Color {
-            isHovering ? Color(nsColor: .selectedContentBackgroundColor) : .clear
+            (isEnabled && isHovering) ? Color(nsColor: .selectedContentBackgroundColor) : .clear
         }
 
         private var rowForegroundColor: Color {
-            isHovering ? Color(nsColor: .selectedMenuItemTextColor) : .primary
+            if !isEnabled {
+                return .secondary
+            }
+            return isHovering ? Color(nsColor: .selectedMenuItemTextColor) : .primary
         }
 
         private var shortcutForegroundColor: Color {
-            isHovering ? Color(nsColor: .selectedMenuItemTextColor) : .secondary
+            if !isEnabled {
+                return .secondary
+            }
+            return isHovering ? Color(nsColor: .selectedMenuItemTextColor) : .secondary
         }
 
         private var iconColumn: some View {
@@ -205,7 +233,10 @@ struct MenuBarView: View {
                 .background(rowBackgroundColor)
             }
             .buttonStyle(.plain)
-            .onHover { isHovering = $0 }
+            .disabled(!isEnabled)
+            .onHover { hovering in
+                isHovering = isEnabled && hovering
+            }
         }
     }
 }

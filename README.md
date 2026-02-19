@@ -26,6 +26,12 @@ brew tap mblode/tap
 brew install --cask commandment
 ```
 
+## Updates
+
+- Direct-download installs can use **Check for Updates...** from the menu bar or Settings
+- In-app updates are delivered through Sparkle appcasts with EdDSA signatures
+- Homebrew installs can continue updating with `brew upgrade --cask commandment`
+
 ## License
 
 [MIT](LICENSE.md)

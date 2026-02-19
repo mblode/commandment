@@ -13,6 +13,7 @@ struct CommandmentApp: App {
     @StateObject private var audioManager: AudioManager
     @StateObject private var hotkeyManager: HotkeyManager
     @StateObject private var transcriptionManager: TranscriptionManager
+    @StateObject private var updateManager: UpdateManager
     @StateObject private var coordinator: RecordingCoordinator
 
     // Initialize Logger early
@@ -36,7 +37,12 @@ struct CommandmentApp: App {
         let audio = AudioManager()
         let transcription = TranscriptionManager()
         let hotkey = HotkeyManager()
-        SettingsWindowController.shared.configure(transcriptionManager: transcription, audioManager: audio)
+        let updater = UpdateManager()
+        SettingsWindowController.shared.configure(
+            transcriptionManager: transcription,
+            audioManager: audio,
+            updateManager: updater
+        )
 
         // Initialize coordinator with the same instances
         let coordinator = RecordingCoordinator(
@@ -48,6 +54,7 @@ struct CommandmentApp: App {
         _audioManager = StateObject(wrappedValue: audio)
         _hotkeyManager = StateObject(wrappedValue: hotkey)
         _transcriptionManager = StateObject(wrappedValue: transcription)
+        _updateManager = StateObject(wrappedValue: updater)
         _coordinator = StateObject(wrappedValue: coordinator)
 
         // Log system info
@@ -60,7 +67,8 @@ struct CommandmentApp: App {
         MenuBarExtra {
             MenuBarView(audioManager: audioManager,
                        hotkeyManager: hotkeyManager,
-                       transcriptionManager: transcriptionManager)
+                       transcriptionManager: transcriptionManager,
+                       updateManager: updateManager)
         } label: {
             menuBarIcon
         }
@@ -70,6 +78,7 @@ struct CommandmentApp: App {
             SettingsView()
                 .environmentObject(transcriptionManager)
                 .environmentObject(audioManager)
+                .environmentObject(updateManager)
         }
     }
 

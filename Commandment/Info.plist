@@ -6,5 +6,13 @@
     <true/>
     <key>NSAccessibilityUsageDescription</key>
     <string>Commandment needs accessibility access to simulate keyboard events for pasting.</string>
+    <key>SUEnableAutomaticChecks</key>
+    <false/>
+    <key>SUEnableInstallerLauncherService</key>
+    <true/>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/mblode/commandment/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>ZKHJfGxz7K6xEUTxamsWq+udlCw1YDAXAZzaX62TL4k=</string>
 </dict>
 </plist>

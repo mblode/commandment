@@ -8,6 +8,7 @@ cask "commandment" do
   homepage "https://github.com/mblode/commandment"
 
   depends_on macos: ">= :sequoia"
+  auto_updates true
 
   app "Commandment.app"
 

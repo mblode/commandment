@@ -40,6 +40,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
+            CURRENT_PROJECT_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             build
 
       - name: Test
@@ -51,6 +52,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
+            CURRENT_PROJECT_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             test
 
   release:
@@ -87,6 +89,7 @@ jobs:
             CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             MARKETING_VERSION=${{ steps.version.outputs.VERSION }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.VERSION }} \
             archive
 
       - name: Export archive
@@ -160,6 +163,74 @@ jobs:
           draft: false
           prerelease: false
 
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          DMG_PATH="/tmp/commandment-build/Commandment-${VERSION}.dmg"
+          DMG_SIZE=$(stat -f%z "${DMG_PATH}")
+          RELEASE_URL="https://github.com/mblode/commandment/releases/tag/v${VERSION}"
+          DOWNLOAD_URL="https://github.com/mblode/commandment/releases/download/v${VERSION}/Commandment-${VERSION}.dmg"
+          PUB_DATE=$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")
+          SPARKLE_SIGN_UPDATE="/tmp/commandment-build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
+
+          if [[ -z "${SPARKLE_PRIVATE_ED_KEY}" ]]; then
+            echo "SPARKLE_PRIVATE_ED_KEY secret is required for signed appcasts"
+            exit 1
+          fi
+
+          ED_SIGNATURE=$(printf '%s' "${SPARKLE_PRIVATE_ED_KEY}" | "${SPARKLE_SIGN_UPDATE}" --ed-key-file - -p "${DMG_PATH}")
+
+          cat > /tmp/appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0"
+              xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+              xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>Commandment</title>
+              <link>https://github.com/mblode/commandment</link>
+              <description>Commandment updates</description>
+              <language>en</language>
+              <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${PUB_DATE}</pubDate>
+                <link>${RELEASE_URL}</link>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
+                <enclosure
+                  url="${DOWNLOAD_URL}"
+                  sparkle:version="${VERSION}"
+                  sparkle:shortVersionString="${VERSION}"
+                  sparkle:edSignature="${ED_SIGNATURE}"
+                  type="application/octet-stream"
+                  length="${DMG_SIZE}" />
+              </item>
+            </channel>
+          </rss>
+          EOF
+
+      - name: Publish appcast to main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+
+          cp /tmp/appcast.xml appcast.xml
+
+          if git diff --quiet -- appcast.xml; then
+            echo "appcast.xml unchanged"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "Update appcast for v${{ steps.version.outputs.VERSION }}"
+          git push origin main
+
       - name: Compute DMG SHA256
         id: sha
         run: echo "SHA256=$(shasum -a 256 /tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
@@ -183,6 +254,7 @@ jobs:
             homepage "https://github.com/mblode/commandment"
 
             depends_on macos: ">= :sequoia"
+            auto_updates true
 
             app "Commandment.app"
 

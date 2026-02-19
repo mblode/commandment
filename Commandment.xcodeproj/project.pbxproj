@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3FB30F1B2F47A5760009EF71 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000001 /* KeyboardShortcuts */; };
-		3FB30F1C2F47A5760009EF71 /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000003 /* LaunchAtLogin */; };
+			3FB30F1B2F47A5760009EF71 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000001 /* KeyboardShortcuts */; };
+			3FB30F1C2F47A5760009EF71 /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000003 /* LaunchAtLogin */; };
+			3FB30F1D2F47A5760009EF71 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AABB000000000006 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,13 +54,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		01607EF82D1883C80006DBE4 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			files = (
-				3FB30F1C2F47A5760009EF71 /* LaunchAtLogin in Frameworks */,
-				3FB30F1B2F47A5760009EF71 /* KeyboardShortcuts in Frameworks */,
-			);
-		};
+			01607EF82D1883C80006DBE4 /* Frameworks */ = {
+				isa = PBXFrameworksBuildPhase;
+				files = (
+					3FB30F1D2F47A5760009EF71 /* Sparkle in Frameworks */,
+					3FB30F1C2F47A5760009EF71 /* LaunchAtLogin in Frameworks */,
+					3FB30F1B2F47A5760009EF71 /* KeyboardShortcuts in Frameworks */,
+				);
+			};
 		CC000000000000D1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
@@ -103,10 +105,11 @@
 				01607EFD2D1883C80006DBE4 /* Commandment */,
 			);
 			name = Commandment;
-			packageProductDependencies = (
-				AABB000000000001 /* KeyboardShortcuts */,
-				AABB000000000003 /* LaunchAtLogin */,
-			);
+				packageProductDependencies = (
+					AABB000000000001 /* KeyboardShortcuts */,
+					AABB000000000003 /* LaunchAtLogin */,
+					AABB000000000006 /* Sparkle */,
+				);
 			productName = Commandment;
 			productReference = 01607EFB2D1883C80006DBE4 /* Commandment.app */;
 			productType = "com.apple.product-type.application";
@@ -160,10 +163,11 @@
 			);
 			mainGroup = 01607EF22D1883C80006DBE4;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
-				AABB000000000004 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */,
-			);
+				packageReferences = (
+					AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+					AABB000000000004 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */,
+					AABB000000000005 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 01607EFC2D1883C80006DBE4 /* Products */;
 			projectDirPath = "";
@@ -362,7 +366,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = co.blode.commandment;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -398,7 +402,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = co.blode.commandment;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -415,7 +419,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = co.blode.commandment.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -433,7 +437,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 0.1.4;
+				MARKETING_VERSION = 0.1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = co.blode.commandment.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -472,35 +476,48 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
-			requirement = {
+			AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+				isa = XCRemoteSwiftPackageReference;
+				repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+				requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.0.0;
 			};
 		};
-		AABB000000000004 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sindresorhus/LaunchAtLogin-Modern";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
+			AABB000000000004 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */ = {
+				isa = XCRemoteSwiftPackageReference;
+				repositoryURL = "https://github.com/sindresorhus/LaunchAtLogin-Modern";
+				requirement = {
+					kind = upToNextMajorVersion;
+					minimumVersion = 1.0.0;
+				};
 			};
-		};
+			AABB000000000005 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+				isa = XCRemoteSwiftPackageReference;
+				repositoryURL = "https://github.com/sparkle-project/Sparkle";
+				requirement = {
+					kind = upToNextMajorVersion;
+					minimumVersion = 2.8.1;
+				};
+			};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AABB000000000001 /* KeyboardShortcuts */ = {
-			isa = XCSwiftPackageProductDependency;
+			AABB000000000001 /* KeyboardShortcuts */ = {
+				isa = XCSwiftPackageProductDependency;
 			package = AABB000000000002 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
 		};
-		AABB000000000003 /* LaunchAtLogin */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = AABB000000000004 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */;
-			productName = LaunchAtLogin;
-		};
+			AABB000000000003 /* LaunchAtLogin */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = AABB000000000004 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */;
+				productName = LaunchAtLogin;
+			};
+			AABB000000000006 /* Sparkle */ = {
+				isa = XCSwiftPackageProductDependency;
+				package = AABB000000000005 /* XCRemoteSwiftPackageReference "Sparkle" */;
+				productName = Sparkle;
+			};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 01607EF32D1883C80006DBE4 /* Project object */;
