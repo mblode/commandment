@@ -5,6 +5,7 @@
 //  Created by Matthew Blode.
 //
 
+import AppKit
 import SwiftUI
 
 @main
@@ -16,6 +17,17 @@ struct CommandmentApp: App {
 
     // Initialize Logger early
     private let logger = Logger.shared
+    private static let menuBarLogoImage: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "logo", withExtension: "svg"),
+              let image = NSImage(contentsOf: url) else {
+            return nil
+        }
+
+        // Template icons adapt correctly to light/dark menu bar appearances.
+        image.isTemplate = true
+        image.size = NSSize(width: 18, height: 18)
+        return image
+    }()
 
     init() {
         logInfo("CommandmentApp: Initializing")
@@ -51,17 +63,7 @@ struct CommandmentApp: App {
                        transcriptionManager: transcriptionManager,
                        coordinator: coordinator)
         } label: {
-            if audioManager.isRecording {
-                Image(systemName: "mic.badge.xmark.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.red, .primary)
-            } else if transcriptionManager.isTranscribing {
-                Image(systemName: "mic.fill.badge.plus")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.primary, .yellow)
-            } else {
-                Image(systemName: "mic.fill")
-            }
+            menuBarIcon
         }
         .menuBarExtraStyle(.window)
 
@@ -69,5 +71,12 @@ struct CommandmentApp: App {
             SettingsView()
                 .environmentObject(transcriptionManager)
         }
+    }
+
+    private var menuBarIcon: Image {
+        if let logoImage = Self.menuBarLogoImage {
+            return Image(nsImage: logoImage)
+        }
+        return Image(systemName: "mic.fill")
     }
 }

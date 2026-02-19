@@ -1,10 +1,20 @@
-# Commandment
+<p align="center">
+  <img src="commandment-macOS-Default-1024x1024@1x.png" width="128" alt="Commandment app icon">
+</p>
 
-A minimal macOS menu bar app for voice dictation using OpenAI's transcription API. Press a hotkey, speak, and your words are typed wherever your cursor is.
+<h1 align="center">Commandment</h1>
 
-## Download
+<p align="center">
+  Voice dictation for macOS. Press a hotkey, speak, and your words appear wherever your cursor is.
+</p>
 
-**[Download the latest release](https://github.com/mblode/commandment/releases/latest)** (macOS 15.2+)
+<p align="center">
+  <strong><a href="https://github.com/mblode/commandment/releases/latest">Download for macOS</a></strong>
+  &nbsp;&middot;&nbsp;
+  macOS 15.2+
+  &nbsp;&middot;&nbsp;
+  Free &amp; open source
+</p>
 
 Or install with Homebrew:
 
@@ -15,35 +25,41 @@ brew install --cask commandment
 
 ## Features
 
-- Global hotkey (default: Hyperkey+Y) — configurable in Settings
-- Fast transcription via gpt-4o-mini-transcribe
-- Types text directly into any app via System Events
-- API key stored securely in macOS Keychain
-- Floating overlay showing recording/processing/success states
-- Clean menu bar interface with status indicator
-- Signed and notarized by Apple
+- **Global hotkey** — hold to record, release to transcribe (default: Hyperkey+Y, configurable)
+- **Fast transcription** — powered by OpenAI's gpt-4o-mini-transcribe model
+- **Real-time streaming** — audio streams to OpenAI's Realtime API via WebSocket, with REST fallback
+- **Types anywhere** — inserts transcribed text directly into any app via System Events
+- **Secure** — API key stored in macOS Keychain, never written to disk in plaintext
+- **Floating overlay** — shows recording, processing, and success states
+- **Menu bar native** — lives in the menu bar with a color-coded status indicator
+- **Clipboard preservation** — restores your clipboard after text insertion
+- **Reliable** — automatic retry with exponential backoff on network failures
+- **Signed and notarized** — code-signed and notarized by Apple for Gatekeeper
 
 ## Getting Started
 
-1. Download the DMG and drag Commandment to Applications
+1. Download the DMG from [Releases](https://github.com/mblode/commandment/releases/latest) and drag Commandment to Applications
 2. Launch Commandment — a microphone icon appears in your menu bar
-3. Open Settings (click menu bar icon → Settings) and enter your OpenAI API key
-4. Grant **microphone** and **accessibility** permissions when prompted
-5. Place your cursor where you want text, press your hotkey (default: ⌃⌥⇧⌘Y), speak, then press the hotkey again to stop
+3. Click the menu bar icon, open **Settings**, and enter your [OpenAI API key](https://platform.openai.com/api-keys)
+4. Grant **Microphone** and **Accessibility** permissions when prompted
+5. Place your cursor in any text field, hold your hotkey (default: ⌃⌥⇧⌘Y), speak, then release to transcribe
 
 ## Requirements
 
 - macOS 15.2 or later
-- OpenAI API key
+- [OpenAI API key](https://platform.openai.com/api-keys)
 
 ## Privacy & Security
 
-- API key stored in macOS Keychain (never on disk in plaintext)
-- Audio processed through OpenAI's transcription API
-- No audio stored locally after transcription
-- Requires accessibility permission for text insertion
+- Your API key is stored in the macOS Keychain, never on disk in plaintext
+- Audio is sent directly to OpenAI's API using your own key — no intermediary servers
+- Temporary audio files are deleted after transcription
+- Accessibility permission is required to simulate keyboard input for text insertion
+- Microphone permission is required for audio capture
 
 ## Building from Source
+
+Requires Xcode 16+ and macOS 15.2+ SDK.
 
 ```bash
 git clone https://github.com/mblode/commandment.git
@@ -59,8 +75,4 @@ xcodebuild -scheme Commandment -configuration Release build -derivedDataPath /tm
 
 ## License
 
-MIT License — see [LICENSE.txt](LICENSE.txt) for details.
-
-## Author
-
-Matthew Blode — [m@blode.co](mailto:m@blode.co)
+MIT — see [LICENSE.md](LICENSE.md) for details.
