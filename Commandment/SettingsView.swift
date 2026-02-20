@@ -42,6 +42,16 @@ struct SettingsView: View {
                     Spacer()
                     KeyboardShortcuts.Recorder("", name: .toggleRecording)
                 }
+
+                HStack {
+                    Text("Open Settings")
+                    Spacer()
+                    KeyboardShortcuts.Recorder("", name: .openSettings)
+                }
+
+                Text("If the menu bar icon is hidden, use this shortcut to reopen Settings.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Permissions") {

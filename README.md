@@ -14,6 +14,7 @@
 - Streams audio to OpenAI in real time
 - Auto-inserts text into the focused app
 - API key stays in macOS Keychain — no middleman
+- Default shortcuts: `Option + D` to record, `Option + Shift + D` to open Settings
 
 ## Install
 
@@ -31,6 +32,10 @@ brew install --cask commandment
 - Direct-download installs can use **Check for Updates...** from the menu bar or Settings
 - In-app updates are delivered through Sparkle appcasts with EdDSA signatures
 - Homebrew installs can continue updating with `brew upgrade --cask commandment`
+
+## Troubleshooting
+
+- If Commandment is running but you can't see its menu bar icon (for example due to menu bar overflow/hidden-icon apps), press `Option + Shift + D` to open Settings directly.
 
 ## License
 

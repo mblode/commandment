@@ -18,7 +18,6 @@ build:
 		-configuration $(CONFIGURATION) \
 		-derivedDataPath $(DERIVED_DATA) \
 		MARKETING_VERSION=$(VERSION) \
-		CURRENT_PROJECT_VERSION=$(VERSION) \
 		build
 
 test:
@@ -27,7 +26,6 @@ test:
 		-destination 'platform=macOS' \
 		-derivedDataPath $(DERIVED_DATA) \
 		MARKETING_VERSION=$(VERSION) \
-		CURRENT_PROJECT_VERSION=$(VERSION) \
 		test
 
 archive:
@@ -39,7 +37,6 @@ archive:
 		CODE_SIGN_IDENTITY="$(CODESIGN_IDENTITY)" \
 		DEVELOPMENT_TEAM="$(TEAM_ID)" \
 		MARKETING_VERSION=$(VERSION) \
-		CURRENT_PROJECT_VERSION=$(VERSION) \
 		archive
 
 export: archive

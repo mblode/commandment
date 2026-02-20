@@ -25,7 +25,7 @@ macOS menu bar dictation app — BYO OpenAI API key. Swift 5 / SwiftUI + Keyboar
 - HotkeyManager is `@MainActor` — removing this will cause KeyboardShortcuts crashes on background threads
 - Settings changes propagate via `@EnvironmentObject` (`TranscriptionManager`) — do not replace with NotificationCenter
 - Default transcription model is `gpt-4o-mini-transcribe` — configured in `TranscriptionManager`
-- Default global hotkey is Hyperkey+Y — configured via KeyboardShortcuts in `HotkeyManager`
+- Default global hotkeys are Option+D (record) and Option+Shift+D (open Settings) — configured via KeyboardShortcuts in `HotkeyManager`
 
 ## Conventions
 - Network retries use exponential backoff (1s, 2s, 4s) with max 3 attempts

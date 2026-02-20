@@ -40,7 +40,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
-            CURRENT_PROJECT_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             build
 
       - name: Test
@@ -52,7 +51,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             MARKETING_VERSION=${{ steps.ci-version.outputs.VERSION }} \
-            CURRENT_PROJECT_VERSION=${{ steps.ci-version.outputs.VERSION }} \
             test
 
   release:
@@ -89,7 +87,6 @@ jobs:
             CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             MARKETING_VERSION=${{ steps.version.outputs.VERSION }} \
-            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.VERSION }} \
             archive
 
       - name: Export archive

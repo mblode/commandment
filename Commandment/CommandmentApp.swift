@@ -10,6 +10,8 @@ import SwiftUI
 
 @main
 struct CommandmentApp: App {
+    private static let didRevealSettingsOnFirstLaunchKey = "didRevealSettingsOnFirstLaunch"
+
     @StateObject private var audioManager: AudioManager
     @StateObject private var hotkeyManager: HotkeyManager
     @StateObject private var transcriptionManager: TranscriptionManager
@@ -57,6 +59,8 @@ struct CommandmentApp: App {
         _updateManager = StateObject(wrappedValue: updater)
         _coordinator = StateObject(wrappedValue: coordinator)
 
+        scheduleFirstLaunchSettingsRevealIfNeeded(transcriptionManager: transcription)
+
         // Log system info
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -72,7 +76,6 @@ struct CommandmentApp: App {
         } label: {
             menuBarIcon
         }
-        .menuBarExtraStyle(.window)
 
         Settings {
             SettingsView()
@@ -87,5 +90,28 @@ struct CommandmentApp: App {
             return Image(nsImage: logoImage)
         }
         return Image(systemName: "mic.fill")
+    }
+
+    private func scheduleFirstLaunchSettingsRevealIfNeeded(transcriptionManager: TranscriptionManager) {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else {
+            return
+        }
+
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: Self.didRevealSettingsOnFirstLaunchKey) == false else {
+            return
+        }
+
+        // The app can be hidden behind menu bar overflow/hidden-menu utilities.
+        // Reveal Settings once so first-time users always get a visible entry point.
+        guard transcriptionManager.getAPIKey() == nil || !transcriptionManager.setupGuideDismissed else {
+            return
+        }
+
+        defaults.set(true, forKey: Self.didRevealSettingsOnFirstLaunchKey)
+        DispatchQueue.main.async {
+            logInfo("CommandmentApp: Revealing Settings on first launch for menu bar discoverability")
+            SettingsWindowController.shared.show()
+        }
     }
 }
