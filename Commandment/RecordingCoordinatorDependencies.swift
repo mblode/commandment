@@ -18,6 +18,7 @@ extension AudioManager: RecordingAudioManaging {}
 
 protocol RecordingTranscriptionManaging: AnyObject {
     var selectedModel: TranscriptionModel { get }
+    var selectedLanguage: TranscriptionLanguage { get }
 
     func getAPIKey() -> String?
     func transcribeWithRetry(audioURL: URL, completion: @escaping (Result<String, TranscriptionError>) -> Void)
@@ -32,6 +33,7 @@ extension RecordingTranscriptionManaging {
 extension TranscriptionManager: RecordingTranscriptionManaging {}
 
 protocol RealtimeTranscribing: AnyObject {
+    var onTranscriptDelta: ((String) -> Void)? { get set }
     func connect(completion: @escaping (Bool) -> Void)
     func sendAudioChunk(_ pcm16Data: Data)
     func commitAudio(onTranscript: @escaping (String) -> Void, onError: @escaping (Error) -> Void)

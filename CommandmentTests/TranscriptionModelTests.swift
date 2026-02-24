@@ -4,15 +4,15 @@ import XCTest
 final class TranscriptionModelTests: XCTestCase {
 
     func test_rawValues_matchOpenAIAPIStrings() {
-        XCTAssertEqual(TranscriptionModel.gpt4oMiniTranscribe.rawValue, "gpt-4o-mini-transcribe")
+        XCTAssertEqual(TranscriptionModel.gpt4oTranscribe.rawValue, "gpt-4o-transcribe")
     }
 
     func test_displayName_isHumanReadable() {
-        XCTAssertEqual(TranscriptionModel.gpt4oMiniTranscribe.displayName, "GPT-4o Mini Transcribe")
+        XCTAssertEqual(TranscriptionModel.gpt4oTranscribe.displayName, "GPT-4o Transcribe")
     }
 
     func test_allCases_containsExactlyOneModel() {
-        XCTAssertEqual(TranscriptionModel.allCases, [.gpt4oMiniTranscribe])
+        XCTAssertEqual(TranscriptionModel.allCases, [.gpt4oTranscribe])
     }
 
     func test_codable_roundTrip() throws {

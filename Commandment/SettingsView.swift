@@ -7,6 +7,7 @@ struct SettingsView: View {
     @EnvironmentObject private var audioManager: AudioManager
     @EnvironmentObject private var updateManager: UpdateManager
     @State private var apiKey: String = ""
+    @State private var apiKeyError: String?
     @FocusState private var isAPIKeyFieldFocused: Bool
 
     var body: some View {
@@ -18,6 +19,9 @@ struct SettingsView: View {
                     .labelsHidden()
                     .focused($isAPIKeyFieldFocused)
                     .onSubmit { persistAPIKeyIfNeeded() }
+                    .onChange(of: apiKey) { _, _ in
+                        apiKeyError = nil
+                    }
                     .onChange(of: isAPIKeyFieldFocused) { oldValue, newValue in
                         if oldValue && !newValue { persistAPIKeyIfNeeded() }
                     }
@@ -30,8 +34,26 @@ struct SettingsView: View {
                     Link("Get API key", destination: URL(string: "https://platform.openai.com/api-keys")!)
                         .font(.caption)
                 }
+
+                if let apiKeyError {
+                    Text(apiKeyError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             } header: {
                 Text("OpenAI API Key")
+            }
+
+            Section("Transcription") {
+                Picker("Language", selection: $transcriptionManager.selectedLanguage) {
+                    ForEach(TranscriptionLanguage.allCases) { lang in
+                        Text(lang.displayName).tag(lang)
+                    }
+                }
+
+                Text("Specifying a language improves accuracy and reduces latency.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("General") {
@@ -123,9 +145,10 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 430, height: 390)
+        .frame(width: 430, height: 470)
         .onAppear {
             apiKey = transcriptionManager.getAPIKey() ?? ""
+            apiKeyError = nil
             audioManager.refreshMicrophonePermissionState()
             transcriptionManager.recheckAccessibilityPermission()
         }
@@ -163,8 +186,13 @@ struct SettingsView: View {
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let existingKey = transcriptionManager.getAPIKey() ?? ""
         guard trimmedKey != existingKey else { return }
-        transcriptionManager.setAPIKey(trimmedKey)
-        apiKey = trimmedKey
+        let didPersist = transcriptionManager.setAPIKey(trimmedKey)
+        if didPersist {
+            apiKey = trimmedKey
+            apiKeyError = nil
+        } else {
+            apiKeyError = "Couldn't save API key to Keychain. Check Commandment.log for details."
+        }
     }
 
     private var automaticallyChecksBinding: Binding<Bool> {

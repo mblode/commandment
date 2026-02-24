@@ -8,7 +8,7 @@ class RecordingCoordinator: ObservableObject {
     private let notificationCenter: NotificationCenter
     private let overlay: OverlayPresenting
     private let minimumRecordingDuration: TimeInterval
-    private let realtimeFactory: (String, String) -> RealtimeTranscribing
+    private let realtimeFactory: (String, String, String?) -> RealtimeTranscribing
     private var cancellables = Set<AnyCancellable>()
     private var recordingStartTime: Date?
     private var realtimeManager: RealtimeTranscribing?
@@ -22,8 +22,8 @@ class RecordingCoordinator: ObservableObject {
         notificationCenter: NotificationCenter = .default,
         overlay: OverlayPresenting? = nil,
         minimumRecordingDuration: TimeInterval = 0.3,
-        realtimeFactory: @escaping (String, String) -> RealtimeTranscribing = { apiKey, model in
-            RealtimeTranscriptionManager(apiKey: apiKey, model: model)
+        realtimeFactory: @escaping (String, String, String?) -> RealtimeTranscribing = { apiKey, model, language in
+            RealtimeTranscriptionManager(apiKey: apiKey, model: model, language: language)
         }
     ) {
         logInfo("RecordingCoordinator: Initializing")
@@ -60,8 +60,17 @@ class RecordingCoordinator: ObservableObject {
 
         // Start Realtime WebSocket connection in parallel with recording.
         let model = transcriptionManager.selectedModel.realtimeModelID
-        let rtManager = realtimeFactory(apiKey, model)
+        let language = transcriptionManager.selectedLanguage.apiValue
+        let rtManager = realtimeFactory(apiKey, model, language)
         self.realtimeManager = rtManager
+
+        var accumulatedTranscript = ""
+        rtManager.onTranscriptDelta = { [weak self] delta in
+            accumulatedTranscript += delta
+            DispatchQueue.main.async {
+                self?.overlay.show(state: .transcribing(accumulatedTranscript))
+            }
+        }
 
         audioManager.onAudioChunk = { [weak rtManager] (pcm16Data: Data) in
             rtManager?.sendAudioChunk(pcm16Data)

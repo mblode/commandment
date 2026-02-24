@@ -5,18 +5,21 @@ class RealtimeTranscriptionManager {
     private var urlSession: URLSession?
     private let apiKey: String
     private let model: String
+    private let language: String?
 
     // Serial queue protects all mutable state below
     private let queue = DispatchQueue(label: "co.blode.commandment.realtime")
     private var onTranscriptCompleted: ((String) -> Void)?
     private var onError: ((Error) -> Void)?
+    var onTranscriptDelta: ((String) -> Void)?
     private var isSessionConfigured = false
     private var connectCompletion: ((Bool) -> Void)?
     private var pendingAudioChunks: [Data] = []
 
-    init(apiKey: String, model: String = "gpt-4o-mini-transcribe") {
+    init(apiKey: String, model: String = "gpt-4o-transcribe", language: String? = "en") {
         self.apiKey = apiKey
         self.model = model
+        self.language = language
     }
 
     // MARK: - Connection
@@ -25,7 +28,6 @@ class RealtimeTranscriptionManager {
         let url = URL(string: "wss://api.openai.com/v1/realtime?intent=transcription")!
         var request = URLRequest(url: url)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("realtime=v1", forHTTPHeaderField: "OpenAI-Beta")
         request.timeoutInterval = 10
 
         let session = URLSession(configuration: .default)
@@ -53,14 +55,16 @@ class RealtimeTranscriptionManager {
     }
 
     private func configureSession(completion: @escaping (Bool) -> Void) {
+        var transcriptionConfig: [String: Any] = ["model": model]
+        if let language = language {
+            transcriptionConfig["language"] = language
+        }
+
         let config: [String: Any] = [
             "type": "transcription_session.update",
             "session": [
                 "input_audio_format": "pcm16",
-                "input_audio_transcription": [
-                    "model": model,
-                    "language": "en"
-                ],
+                "input_audio_transcription": transcriptionConfig,
                 "turn_detection": NSNull(),
                 "input_audio_noise_reduction": [
                     "type": "near_field"
@@ -223,6 +227,13 @@ class RealtimeTranscriptionManager {
                 self.flushPendingChunks()
             }
 
+        case "conversation.item.input_audio_transcription.delta":
+            if let delta = json["delta"] as? String {
+                logDebug("RealtimeTranscription: Delta (\(delta.count) chars)")
+                let callback = self.onTranscriptDelta
+                callback?(delta)
+            }
+
         case "conversation.item.input_audio_transcription.completed":
             if let transcript = json["transcript"] as? String {
                 logInfo("RealtimeTranscription: Completed, length: \(transcript.count)")
@@ -263,6 +274,7 @@ class RealtimeTranscriptionManager {
         queue.sync {
             connectCompletion = nil
             onTranscriptCompleted = nil
+            onTranscriptDelta = nil
             onError = nil
             isSessionConfigured = false
             pendingAudioChunks.removeAll()

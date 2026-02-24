@@ -17,7 +17,7 @@ final class RecordingCoordinatorTests: XCTestCase {
         let notifications = NotificationCenter()
         let overlay = OverlaySpy()
         let audio = MockAudioManager()
-        let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
+        let transcription = MockTranscriptionManager(model: .gpt4oTranscribe, apiKey: "test-key")
         let realtimeFactory = RealtimeFactorySpy()
         let realtime = MockRealtimeManager()
         realtime.commitTranscript = "hello from realtime"
@@ -66,7 +66,7 @@ final class RecordingCoordinatorTests: XCTestCase {
         let notifications = NotificationCenter()
         let overlay = OverlaySpy()
         let audio = MockAudioManager()
-        let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
+        let transcription = MockTranscriptionManager(model: .gpt4oTranscribe, apiKey: "test-key")
         let realtimeFactory = RealtimeFactorySpy()
         let realtime = MockRealtimeManager()
         realtimeFactory.nextManager = realtime
@@ -111,7 +111,7 @@ final class RecordingCoordinatorTests: XCTestCase {
         let notifications = NotificationCenter()
         let overlay = OverlaySpy()
         let audio = MockAudioManager()
-        let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
+        let transcription = MockTranscriptionManager(model: .gpt4oTranscribe, apiKey: "test-key")
         let realtimeFactory = RealtimeFactorySpy()
         let realtime = MockRealtimeManager()
         realtimeFactory.nextManager = realtime
@@ -156,7 +156,7 @@ final class RecordingCoordinatorTests: XCTestCase {
         let notifications = NotificationCenter()
         let overlay = OverlaySpy()
         let audio = MockAudioManager()
-        let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
+        let transcription = MockTranscriptionManager(model: .gpt4oTranscribe, apiKey: "test-key")
         let realtimeFactory = RealtimeFactorySpy()
         let realtime = MockRealtimeManager()
         realtime.commitError = NSError(domain: "RecordingCoordinatorTests", code: 1)
@@ -246,6 +246,7 @@ private final class MockAudioManager: RecordingAudioManaging {
 
 private final class MockTranscriptionManager: RecordingTranscriptionManaging {
     var selectedModel: TranscriptionModel
+    var selectedLanguage: TranscriptionLanguage = .en
     var apiKey: String?
     var transcribeResult: Result<String, TranscriptionError> = .success("")
     var onPaste: ((String) -> Void)?
@@ -276,6 +277,7 @@ private final class MockTranscriptionManager: RecordingTranscriptionManaging {
 }
 
 private final class MockRealtimeManager: RealtimeTranscribing {
+    var onTranscriptDelta: ((String) -> Void)?
     var commitTranscript = ""
     var commitError: Error?
 
@@ -308,7 +310,7 @@ private final class RealtimeFactorySpy {
     var nextManager: MockRealtimeManager?
     private(set) var createdManagers: [MockRealtimeManager] = []
 
-    func make(_ apiKey: String, _ model: String) -> RealtimeTranscribing {
+    func make(_ apiKey: String, _ model: String, _ language: String?) -> RealtimeTranscribing {
         let manager = nextManager ?? MockRealtimeManager()
         createdManagers.append(manager)
         return manager

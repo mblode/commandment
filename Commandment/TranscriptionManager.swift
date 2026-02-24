@@ -35,14 +35,36 @@ enum TranscriptionError: Error {
 // MARK: - Transcription Model Selection
 
 enum TranscriptionModel: String, CaseIterable, Codable {
-    case gpt4oMiniTranscribe = "gpt-4o-mini-transcribe"
+    case gpt4oTranscribe = "gpt-4o-transcribe"
 
     var displayName: String {
-        "GPT-4o Mini Transcribe"
+        "GPT-4o Transcribe"
     }
 
     /// Model ID to use with the Realtime API
     var realtimeModelID: String { rawValue }
+}
+
+// MARK: - Language Selection
+
+enum TranscriptionLanguage: String, CaseIterable, Codable, Identifiable {
+    case auto = ""
+    case en, es, fr, de, it, pt, nl, ja, ko, zh
+    case ar, hi, ru, pl, sv, da, no, fi, tr, uk
+    case cs, ro, hu, el, th, vi, id, ms
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        if self == .auto { return "Auto-detect" }
+        return Locale.current.localizedString(forLanguageCode: rawValue)
+            ?? rawValue.uppercased()
+    }
+
+    /// Value to send to the API, or nil for auto-detect.
+    var apiValue: String? {
+        self == .auto ? nil : rawValue
+    }
 }
 
 class TranscriptionManager: ObservableObject {
@@ -57,6 +79,7 @@ class TranscriptionManager: ObservableObject {
         audioData: Data,
         boundary: String,
         model: TranscriptionModel,
+        language: TranscriptionLanguage = .en,
         isM4A: Bool = false
     ) -> Data {
         let filename = isM4A ? "recording.m4a" : "recording.wav"
@@ -71,6 +94,11 @@ class TranscriptionManager: ObservableObject {
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
         data.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
         data.append("\(model.rawValue)\r\n".data(using: .utf8)!)
+        if let langCode = language.apiValue {
+            data.append("--\(boundary)\r\n".data(using: .utf8)!)
+            data.append("Content-Disposition: form-data; name=\"language\"\r\n\r\n".data(using: .utf8)!)
+            data.append("\(langCode)\r\n".data(using: .utf8)!)
+        }
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
         data.append("Content-Disposition: form-data; name=\"temperature\"\r\n\r\n".data(using: .utf8)!)
         data.append("0.0\r\n".data(using: .utf8)!)
@@ -81,7 +109,18 @@ class TranscriptionManager: ObservableObject {
     @Published var isTranscribing = false
     @Published var hasAccessibilityPermission = false
     @Published var statusMessage = ""
-    @Published var selectedModel: TranscriptionModel = .gpt4oMiniTranscribe
+    @Published var selectedModel: TranscriptionModel = .gpt4oTranscribe
+    @Published var selectedLanguage: TranscriptionLanguage = {
+        if let raw = UserDefaults.standard.string(forKey: "selectedTranscriptionLanguage"),
+           let lang = TranscriptionLanguage(rawValue: raw) {
+            return lang
+        }
+        return .en
+    }() {
+        didSet {
+            UserDefaults.standard.set(selectedLanguage.rawValue, forKey: "selectedTranscriptionLanguage")
+        }
+    }
     @Published var setupGuideDismissed: Bool = UserDefaults.standard.bool(forKey: "setupGuideDismissed") {
         didSet { UserDefaults.standard.set(setupGuideDismissed, forKey: "setupGuideDismissed") }
     }
@@ -125,22 +164,35 @@ class TranscriptionManager: ObservableObject {
         // Migrate from UserDefaults if present
         if let legacyKey = UserDefaults.standard.string(forKey: "OpenAIAPIKey"), !legacyKey.isEmpty {
             logInfo("Migrating API key from UserDefaults to Keychain")
-            apiKey = legacyKey
-            KeychainManager.saveAPIKey(legacyKey)
-            UserDefaults.standard.removeObject(forKey: "OpenAIAPIKey")
+            if KeychainManager.saveAPIKey(legacyKey) {
+                apiKey = legacyKey
+                UserDefaults.standard.removeObject(forKey: "OpenAIAPIKey")
+                logInfo("TranscriptionManager: API key migration to keychain succeeded")
+            } else {
+                // Keep legacy key available for current session instead of dropping it.
+                apiKey = legacyKey
+                logError("TranscriptionManager: API key migration to keychain failed; legacy key retained in UserDefaults")
+            }
             return
         }
 
         logInfo("TranscriptionManager: No API key configured")
     }
 
-    func setAPIKey(_ key: String) {
+    @discardableResult
+    func setAPIKey(_ key: String) -> Bool {
         if key.isEmpty {
-            apiKey = nil
-            KeychainManager.deleteAPIKey()
+            let didDelete = KeychainManager.deleteAPIKey()
+            if didDelete {
+                apiKey = nil
+            }
+            return didDelete
         } else {
-            apiKey = key
-            KeychainManager.saveAPIKey(key)
+            let didSave = KeychainManager.saveAPIKey(key)
+            if didSave {
+                apiKey = key
+            }
+            return didSave
         }
     }
 
@@ -293,6 +345,7 @@ class TranscriptionManager: ObservableObject {
             audioData: audioData,
             boundary: boundary,
             model: selectedModel,
+            language: selectedLanguage,
             isM4A: isM4A
         )
 

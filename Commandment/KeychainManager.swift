@@ -5,43 +5,82 @@ enum KeychainManager {
     private static let service = "co.blode.commandment"
     private static let apiKeyAccount = "OpenAIAPIKey"
 
-    private static func withOptionalDataProtectionKeychain(_ baseQuery: [String: Any]) -> [[String: Any]] {
-        var dataProtectionQuery = baseQuery
-        dataProtectionQuery[kSecUseDataProtectionKeychain as String] = true
-        return [dataProtectionQuery, baseQuery]
+    private enum KeychainOperation {
+        case add
+        case copy
+        case delete
+    }
+
+    private static func withDataProtectionKeychain(_ baseQuery: [String: Any]) -> [String: Any] {
+        var query = baseQuery
+        query[kSecUseDataProtectionKeychain as String] = true
+        return query
+    }
+
+    private static func shouldFallbackToLegacy(for status: OSStatus, operation: KeychainOperation) -> Bool {
+        if status == errSecMissingEntitlement {
+            return true
+        }
+
+        switch operation {
+        case .add:
+            return status == errSecNotAvailable || status == errSecInteractionNotAllowed
+        case .copy, .delete:
+            return status == errSecItemNotFound || status == errSecNotAvailable || status == errSecInteractionNotAllowed
+        }
     }
 
     private static func addWithFallback(_ baseQuery: [String: Any]) -> OSStatus {
-        let queries = withOptionalDataProtectionKeychain(baseQuery)
-        let firstStatus = SecItemAdd(queries[0] as CFDictionary, nil)
-        if firstStatus == errSecMissingEntitlement {
-            logInfo("KeychainManager: Falling back to legacy keychain (missing entitlement for data protection keychain)")
-            return SecItemAdd(queries[1] as CFDictionary, nil)
+        let dataProtectionQuery = withDataProtectionKeychain(baseQuery)
+        let dataProtectionStatus = SecItemAdd(dataProtectionQuery as CFDictionary, nil)
+        guard dataProtectionStatus != errSecSuccess else {
+            return dataProtectionStatus
         }
-        return firstStatus
+        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .add) else {
+            return dataProtectionStatus
+        }
+        logInfo("KeychainManager: Falling back to legacy keychain for save (status: \(dataProtectionStatus))")
+        return SecItemAdd(baseQuery as CFDictionary, nil)
     }
 
     private static func deleteWithFallback(_ baseQuery: [String: Any]) -> OSStatus {
-        let queries = withOptionalDataProtectionKeychain(baseQuery)
-        let firstStatus = SecItemDelete(queries[0] as CFDictionary)
-        if firstStatus == errSecMissingEntitlement {
-            return SecItemDelete(queries[1] as CFDictionary)
+        let dataProtectionQuery = withDataProtectionKeychain(baseQuery)
+        let dataProtectionStatus = SecItemDelete(dataProtectionQuery as CFDictionary)
+        guard dataProtectionStatus != errSecSuccess else {
+            return dataProtectionStatus
         }
-        return firstStatus
+        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .delete) else {
+            return dataProtectionStatus
+        }
+        if dataProtectionStatus == errSecMissingEntitlement {
+            logInfo("KeychainManager: Falling back to legacy keychain for delete (missing entitlement)")
+        }
+        return SecItemDelete(baseQuery as CFDictionary)
     }
 
     private static func copyMatchingWithFallback(_ baseQuery: [String: Any], result: inout AnyObject?) -> OSStatus {
-        let queries = withOptionalDataProtectionKeychain(baseQuery)
-        let firstStatus = SecItemCopyMatching(queries[0] as CFDictionary, &result)
-        if firstStatus == errSecMissingEntitlement {
-            result = nil
-            return SecItemCopyMatching(queries[1] as CFDictionary, &result)
+        let dataProtectionQuery = withDataProtectionKeychain(baseQuery)
+        let dataProtectionStatus = SecItemCopyMatching(dataProtectionQuery as CFDictionary, &result)
+        guard dataProtectionStatus != errSecSuccess else {
+            return dataProtectionStatus
         }
-        return firstStatus
+        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .copy) else {
+            return dataProtectionStatus
+        }
+        if dataProtectionStatus == errSecMissingEntitlement {
+            logInfo("KeychainManager: Falling back to legacy keychain for load (missing entitlement)")
+        } else if dataProtectionStatus == errSecItemNotFound {
+            logDebug("KeychainManager: API key not found in data protection keychain, trying legacy keychain")
+        } else {
+            logDebug("KeychainManager: Retrying load against legacy keychain (status: \(dataProtectionStatus))")
+        }
+        result = nil
+        return SecItemCopyMatching(baseQuery as CFDictionary, &result)
     }
 
-    static func saveAPIKey(_ key: String) {
-        guard let data = key.data(using: .utf8) else { return }
+    @discardableResult
+    static func saveAPIKey(_ key: String) -> Bool {
+        guard let data = key.data(using: .utf8) else { return false }
 
         // Delete existing item first
         let deleteQuery: [String: Any] = [
@@ -49,7 +88,10 @@ enum KeychainManager {
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyAccount
         ]
-        _ = deleteWithFallback(deleteQuery)
+        let deleteStatus = deleteWithFallback(deleteQuery)
+        if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
+            logError("KeychainManager: Failed to clear existing API key before save (status: \(deleteStatus))")
+        }
 
         // Add new item
         let addQuery: [String: Any] = [
@@ -63,8 +105,10 @@ enum KeychainManager {
         let status = addWithFallback(addQuery)
         if status == errSecSuccess {
             logInfo("KeychainManager: API key saved to keychain")
+            return true
         } else {
             logError("KeychainManager: Failed to save API key (status: \(status))")
+            return false
         }
     }
 
@@ -92,7 +136,8 @@ enum KeychainManager {
         return String(data: data, encoding: .utf8)
     }
 
-    static func deleteAPIKey() {
+    @discardableResult
+    static func deleteAPIKey() -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -101,8 +146,12 @@ enum KeychainManager {
         let status = deleteWithFallback(query)
         if status == errSecSuccess {
             logInfo("KeychainManager: API key deleted from keychain")
-        } else if status != errSecItemNotFound {
+            return true
+        } else if status == errSecItemNotFound {
+            return true
+        } else {
             logError("KeychainManager: Failed to delete API key (status: \(status))")
+            return false
         }
     }
 }

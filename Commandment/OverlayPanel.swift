@@ -3,6 +3,7 @@ import SwiftUI
 
 enum OverlayState: Equatable {
     case recording
+    case transcribing(String)
     case processing
     case success
     case copiedToClipboard
@@ -23,7 +24,10 @@ class OverlayPanelController {
     func show(state: OverlayState) {
         dismissTimer?.invalidate()
 
-        guard state != currentState || panel == nil else {
+        // Always update for transcribing deltas; skip redundant updates for other states.
+        if case .transcribing = state {
+            // Always update — partial text changes each time.
+        } else if state == currentState, panel != nil {
             panel?.orderFrontRegardless()
             return
         }
@@ -126,6 +130,15 @@ struct OverlayContentView: View {
                 Text("Recording...")
                     .foregroundStyle(.primary)
 
+            case .transcribing(let partialText):
+                Image(systemName: "waveform")
+                    .foregroundStyle(.red)
+                    .symbolEffect(.variableColor.iterative)
+                Text(partialText.suffix(60))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .truncationMode(.head)
+
             case .processing:
                 ProgressView()
                     .controlSize(.small)
@@ -154,6 +167,7 @@ struct OverlayContentView: View {
         .font(.system(size: 13, weight: .medium))
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .frame(maxWidth: 400)
         .background(.ultraThinMaterial, in: Capsule())
         .fixedSize()
     }
