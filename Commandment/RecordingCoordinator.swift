@@ -8,10 +8,8 @@ class RecordingCoordinator: ObservableObject {
     private let notificationCenter: NotificationCenter
     private let overlay: OverlayPresenting
     private let minimumRecordingDuration: TimeInterval
-    private let realtimeFactory: (String, String, String?) -> RealtimeTranscribing
     private var cancellables = Set<AnyCancellable>()
     private var recordingStartTime: Date?
-    private var realtimeManager: RealtimeTranscribing?
     private var delayedStopWork: DispatchWorkItem?
     private var lastSettingsPromptDate: Date?
     private let settingsPromptCooldown: TimeInterval = 5
@@ -21,10 +19,7 @@ class RecordingCoordinator: ObservableObject {
         transcriptionManager: RecordingTranscriptionManaging,
         notificationCenter: NotificationCenter = .default,
         overlay: OverlayPresenting? = nil,
-        minimumRecordingDuration: TimeInterval = 0.3,
-        realtimeFactory: @escaping (String, String, String?) -> RealtimeTranscribing = { apiKey, model, language in
-            RealtimeTranscriptionManager(apiKey: apiKey, model: model, language: language)
-        }
+        minimumRecordingDuration: TimeInterval = 0.3
     ) {
         logInfo("RecordingCoordinator: Initializing")
         self.audioManager = audioManager
@@ -32,7 +27,6 @@ class RecordingCoordinator: ObservableObject {
         self.notificationCenter = notificationCenter
         self.overlay = overlay ?? LiveOverlayPresenter.shared
         self.minimumRecordingDuration = minimumRecordingDuration
-        self.realtimeFactory = realtimeFactory
 
         notificationCenter.publisher(for: NSNotification.Name("HotkeyKeyDown"))
             .receive(on: DispatchQueue.main)
@@ -53,38 +47,9 @@ class RecordingCoordinator: ObservableObject {
             return
         }
 
-        guard let apiKey = transcriptionManager.getAPIKey() else {
+        guard transcriptionManager.getAPIKey() != nil else {
             handleMissingAPIKeyGuidance()
             return
-        }
-
-        // Start Realtime WebSocket connection in parallel with recording.
-        let model = transcriptionManager.selectedModel.realtimeModelID
-        let language = transcriptionManager.selectedLanguage.apiValue
-        let rtManager = realtimeFactory(apiKey, model, language)
-        self.realtimeManager = rtManager
-
-        var accumulatedTranscript = ""
-        rtManager.onTranscriptDelta = { [weak self] delta in
-            accumulatedTranscript += delta
-            DispatchQueue.main.async {
-                self?.overlay.show(state: .transcribing(accumulatedTranscript))
-            }
-        }
-
-        audioManager.onAudioChunk = { [weak rtManager] (pcm16Data: Data) in
-            rtManager?.sendAudioChunk(pcm16Data)
-        }
-
-        rtManager.connect { [weak self] connected in
-            if !connected {
-                logError("RecordingCoordinator: Realtime WebSocket failed to connect, will fall back to REST")
-                DispatchQueue.main.async {
-                    self?.realtimeManager?.disconnect()
-                    self?.realtimeManager = nil
-                    self?.audioManager.onAudioChunk = nil
-                }
-            }
         }
 
         audioManager.startRecording { [weak self] (didStart: Bool) in
@@ -93,9 +58,6 @@ class RecordingCoordinator: ObservableObject {
                 self.recordingStartTime = Date()
                 self.overlay.show(state: .recording)
             } else {
-                self.realtimeManager?.disconnect()
-                self.realtimeManager = nil
-                self.audioManager.onAudioChunk = nil
                 self.overlay.dismiss()
                 if self.audioManager.isMicrophonePermissionDenied {
                     logInfo("RecordingCoordinator: Recording start blocked by missing microphone permission")
@@ -141,13 +103,10 @@ class RecordingCoordinator: ObservableObject {
         delayedStopWork?.cancel()
         delayedStopWork = nil
         recordingStartTime = nil
-        audioManager.onAudioChunk = nil
 
         overlay.show(state: .processing)
 
         guard let recordingURL = audioManager.stopRecording() else {
-            realtimeManager?.disconnect()
-            realtimeManager = nil
             overlay.dismiss()
             logError("RecordingCoordinator: Failed to stop recording - no file returned")
             return
@@ -159,84 +118,51 @@ class RecordingCoordinator: ObservableObject {
         let minimumFileSize: Int64 = 6000
         guard fileSize >= minimumFileSize else {
             logInfo("RecordingCoordinator: Recording too short (\(fileSize) bytes)")
-            realtimeManager?.disconnect()
-            realtimeManager = nil
             overlay.show(state: .tooShort)
             return
         }
 
         logInfo("RecordingCoordinator: Recording file size: \(fileSize) bytes")
 
-        // Try Realtime API first, fall back to REST
-        if let rtManager = realtimeManager {
-            logInfo("RecordingCoordinator: Committing audio via Realtime API")
-            rtManager.commitAudio(
-                onTranscript: { [weak self] transcript in
-                    DispatchQueue.main.async {
-                        guard let self = self else { return }
-                        self.realtimeManager?.disconnect()
-                        self.realtimeManager = nil
-
-                        if transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            logInfo("RecordingCoordinator: Empty transcript from Realtime API")
+        // Use streaming REST transcription — sends complete audio, receives SSE deltas
+        var accumulatedTranscript = ""
+        transcriptionManager.transcribeStreaming(
+            audioURL: recordingURL,
+            onDelta: { [weak self] delta in
+                accumulatedTranscript += delta
+                DispatchQueue.main.async {
+                    self?.overlay.show(state: .transcribing(accumulatedTranscript))
+                }
+            },
+            completion: { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    switch result {
+                    case .success(let text):
+                        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            logInfo("RecordingCoordinator: Empty transcript")
                             self.overlay.show(state: .tooShort)
                         } else {
-                            logInfo("RecordingCoordinator: Realtime transcript (\(transcript.count) chars): \(transcript.prefix(50))...")
+                            logInfo("RecordingCoordinator: Transcript (\(text.count) chars): \(text.prefix(50))...")
                             self.overlay.show(state: .success)
-                            self.transcriptionManager.pasteText(transcript)
+                            self.transcriptionManager.pasteText(text)
                         }
-                    }
-                },
-                onError: { [weak self] error in
-                    DispatchQueue.main.async {
-                        guard let self = self else { return }
-                        logError("RecordingCoordinator: Realtime API failed: \(error), falling back to REST")
-                        self.realtimeManager?.disconnect()
-                        self.realtimeManager = nil
-                        self.fallbackToREST(recordingURL: recordingURL)
-                    }
-                }
-            )
-        } else {
-            fallbackToREST(recordingURL: recordingURL)
-        }
-    }
 
-    // MARK: - REST Fallback
-
-    private func fallbackToREST(recordingURL: URL) {
-        Task {
-            let m4aURL = await audioManager.convertToM4A(wavURL: recordingURL)
-            let urlToTranscribe = m4aURL ?? recordingURL
-            logInfo("RecordingCoordinator: REST fallback using \(urlToTranscribe.pathExtension)")
-            transcribeAudioViaREST(recordingURL: urlToTranscribe)
-        }
-    }
-
-    private func transcribeAudioViaREST(recordingURL: URL) {
-        logInfo("Beginning REST transcription for file: \(recordingURL.lastPathComponent)")
-
-        transcriptionManager.transcribeWithRetry(audioURL: recordingURL) { [weak self] result in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let text):
-                    logInfo("Transcription successful: \(text.prefix(50))...")
-                    self.overlay.show(state: .success)
-                    self.transcriptionManager.pasteText(text)
-
-                case .failure(let error):
-                    self.overlay.dismiss()
-                    if case .noAPIKey = error {
-                        self.handleMissingAPIKeyGuidance()
-                    } else {
-                        logError("RecordingCoordinator: Transcription failed: \(error.description)")
-                        self.showTranscriptionErrorWithOptions(recordingURL: recordingURL, error: error)
+                    case .failure(let error):
+                        self.overlay.dismiss()
+                        if case .noAPIKey = error {
+                            self.handleMissingAPIKeyGuidance()
+                        } else {
+                            logError("RecordingCoordinator: Transcription failed: \(error.description)")
+                            self.showTranscriptionErrorWithOptions(recordingURL: recordingURL, error: error)
+                        }
                     }
                 }
             }
-        }
+        )
     }
+
+    // MARK: - Error Handling
 
     private func handleMissingAPIKeyGuidance() {
         transcriptionManager.setStatusMessage("Add your OpenAI API key in Settings to start dictating.")
@@ -283,7 +209,29 @@ class RecordingCoordinator: ObservableObject {
         switch response {
         case .alertFirstButtonReturn:
             logInfo("RecordingCoordinator: Retrying transcription")
-            transcribeAudioViaREST(recordingURL: recordingURL)
+            var accumulatedTranscript = ""
+            transcriptionManager.transcribeStreaming(
+                audioURL: recordingURL,
+                onDelta: { [weak self] delta in
+                    accumulatedTranscript += delta
+                    DispatchQueue.main.async {
+                        self?.overlay.show(state: .transcribing(accumulatedTranscript))
+                    }
+                },
+                completion: { [weak self] result in
+                    DispatchQueue.main.async {
+                        guard let self = self else { return }
+                        switch result {
+                        case .success(let text):
+                            self.overlay.show(state: .success)
+                            self.transcriptionManager.pasteText(text)
+                        case .failure(let retryError):
+                            self.overlay.dismiss()
+                            logError("RecordingCoordinator: Retry failed: \(retryError.description)")
+                        }
+                    }
+                }
+            )
 
         case .alertSecondButtonReturn:
             logInfo("RecordingCoordinator: Showing in Finder: \(recordingURL)")

@@ -8,21 +8,21 @@ final class TranscriptionRequestTests: XCTestCase {
 
     func test_containsFilePart() {
         let body = TranscriptionManager.buildMultipartBody(
-            audioData: sampleAudio, boundary: boundary, model: .gpt4oTranscribe)
+            audioData: sampleAudio, boundary: boundary, model: .gpt4oMiniTranscribe)
         let bodyString = String(data: body, encoding: .utf8)!
         XCTAssertTrue(bodyString.contains(#"name="file"; filename="recording.wav""#))
     }
 
     func test_containsModelParameter() {
         let body = TranscriptionManager.buildMultipartBody(
-            audioData: sampleAudio, boundary: boundary, model: .gpt4oTranscribe)
+            audioData: sampleAudio, boundary: boundary, model: .gpt4oMiniTranscribe)
         let bodyString = String(data: body, encoding: .utf8)!
-        XCTAssertTrue(bodyString.contains("gpt-4o-transcribe"))
+        XCTAssertTrue(bodyString.contains("gpt-4o-mini-transcribe"))
     }
 
     func test_containsTemperatureParameter() {
         let body = TranscriptionManager.buildMultipartBody(
-            audioData: sampleAudio, boundary: boundary, model: .gpt4oTranscribe)
+            audioData: sampleAudio, boundary: boundary, model: .gpt4oMiniTranscribe)
         let bodyString = String(data: body, encoding: .utf8)!
         XCTAssertTrue(bodyString.contains(#"name="temperature""#))
         XCTAssertTrue(bodyString.contains("0.0"))
@@ -30,9 +30,24 @@ final class TranscriptionRequestTests: XCTestCase {
 
     func test_boundaryDelimiters() {
         let body = TranscriptionManager.buildMultipartBody(
-            audioData: sampleAudio, boundary: boundary, model: .gpt4oTranscribe)
+            audioData: sampleAudio, boundary: boundary, model: .gpt4oMiniTranscribe)
         let bodyString = String(data: body, encoding: .utf8)!
         XCTAssertTrue(bodyString.hasPrefix("--\(boundary)"))
         XCTAssertTrue(bodyString.contains("--\(boundary)--"))
+    }
+
+    func test_streamParameter_whenEnabled() {
+        let body = TranscriptionManager.buildMultipartBody(
+            audioData: sampleAudio, boundary: boundary, model: .gpt4oMiniTranscribe, stream: true)
+        let bodyString = String(data: body, encoding: .utf8)!
+        XCTAssertTrue(bodyString.contains(#"name="stream""#))
+        XCTAssertTrue(bodyString.contains("true"))
+    }
+
+    func test_streamParameter_whenDisabled() {
+        let body = TranscriptionManager.buildMultipartBody(
+            audioData: sampleAudio, boundary: boundary, model: .gpt4oMiniTranscribe, stream: false)
+        let bodyString = String(data: body, encoding: .utf8)!
+        XCTAssertFalse(bodyString.contains(#"name="stream""#))
     }
 }

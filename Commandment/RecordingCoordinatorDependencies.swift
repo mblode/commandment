@@ -3,11 +3,9 @@ import Foundation
 protocol RecordingAudioManaging: AnyObject {
     var isRecording: Bool { get }
     var isMicrophonePermissionDenied: Bool { get }
-    var onAudioChunk: ((Data) -> Void)? { get set }
 
     func startRecording(completion: ((Bool) -> Void)?)
     func stopRecording() -> URL?
-    func convertToM4A(wavURL: URL) async -> URL?
 }
 
 extension RecordingAudioManaging {
@@ -21,7 +19,11 @@ protocol RecordingTranscriptionManaging: AnyObject {
     var selectedLanguage: TranscriptionLanguage { get }
 
     func getAPIKey() -> String?
-    func transcribeWithRetry(audioURL: URL, completion: @escaping (Result<String, TranscriptionError>) -> Void)
+    func transcribeStreaming(
+        audioURL: URL,
+        onDelta: @escaping (String) -> Void,
+        completion: @escaping (Result<String, TranscriptionError>) -> Void
+    )
     func pasteText(_ text: String)
     func setStatusMessage(_ message: String)
 }
@@ -31,16 +33,6 @@ extension RecordingTranscriptionManaging {
 }
 
 extension TranscriptionManager: RecordingTranscriptionManaging {}
-
-protocol RealtimeTranscribing: AnyObject {
-    var onTranscriptDelta: ((String) -> Void)? { get set }
-    func connect(completion: @escaping (Bool) -> Void)
-    func sendAudioChunk(_ pcm16Data: Data)
-    func commitAudio(onTranscript: @escaping (String) -> Void, onError: @escaping (Error) -> Void)
-    func disconnect()
-}
-
-extension RealtimeTranscriptionManager: RealtimeTranscribing {}
 
 @MainActor
 protocol OverlayPresenting: AnyObject {

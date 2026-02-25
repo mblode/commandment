@@ -35,14 +35,13 @@ enum TranscriptionError: Error {
 // MARK: - Transcription Model Selection
 
 enum TranscriptionModel: String, CaseIterable, Codable {
-    case gpt4oTranscribe = "gpt-4o-transcribe"
+    case gpt4oMiniTranscribe = "gpt-4o-mini-transcribe"
 
     var displayName: String {
-        "GPT-4o Transcribe"
+        "GPT-4o Mini Transcribe"
     }
 
-    /// Model ID to use with the Realtime API
-    var realtimeModelID: String { rawValue }
+    var modelID: String { rawValue }
 }
 
 // MARK: - Language Selection
@@ -80,7 +79,8 @@ class TranscriptionManager: ObservableObject {
         boundary: String,
         model: TranscriptionModel,
         language: TranscriptionLanguage = .en,
-        isM4A: Bool = false
+        isM4A: Bool = false,
+        stream: Bool = false
     ) -> Data {
         let filename = isM4A ? "recording.m4a" : "recording.wav"
         let contentType = isM4A ? "audio/mp4" : "audio/wav"
@@ -102,6 +102,11 @@ class TranscriptionManager: ObservableObject {
         data.append("--\(boundary)\r\n".data(using: .utf8)!)
         data.append("Content-Disposition: form-data; name=\"temperature\"\r\n\r\n".data(using: .utf8)!)
         data.append("0.0\r\n".data(using: .utf8)!)
+        if stream {
+            data.append("--\(boundary)\r\n".data(using: .utf8)!)
+            data.append("Content-Disposition: form-data; name=\"stream\"\r\n\r\n".data(using: .utf8)!)
+            data.append("true\r\n".data(using: .utf8)!)
+        }
         data.append("--\(boundary)--\r\n".data(using: .utf8)!)
         return data
     }
@@ -109,7 +114,7 @@ class TranscriptionManager: ObservableObject {
     @Published var isTranscribing = false
     @Published var hasAccessibilityPermission = false
     @Published var statusMessage = ""
-    @Published var selectedModel: TranscriptionModel = .gpt4oTranscribe
+    @Published var selectedModel: TranscriptionModel = .gpt4oMiniTranscribe
     @Published var selectedLanguage: TranscriptionLanguage = {
         if let raw = UserDefaults.standard.string(forKey: "selectedTranscriptionLanguage"),
            let lang = TranscriptionLanguage(rawValue: raw) {
@@ -305,7 +310,118 @@ class TranscriptionManager: ObservableObject {
         attemptTranscription()
     }
 
-    // MARK: - Core Request
+    // MARK: - Streaming Transcription
+
+    func transcribeStreaming(
+        audioURL: URL,
+        onDelta: @escaping (String) -> Void,
+        completion: @escaping (Result<String, TranscriptionError>) -> Void
+    ) {
+        var currentRetry = 0
+        updateStatus("Starting transcription...")
+
+        func attempt() {
+            logInfo("Streaming transcription attempt \(currentRetry + 1) of \(self.maxRetries + 1)")
+
+            if currentRetry > 0 {
+                self.updateStatus("Retry \(currentRetry) of \(self.maxRetries)...")
+            }
+
+            self.performStreamingRequest(audioURL: audioURL, onDelta: onDelta) { result in
+                switch result {
+                case .success(let text):
+                    self.updateStatus("")
+                    completion(.success(text))
+
+                case .failure(let error):
+                    logError("Streaming transcription attempt \(currentRetry + 1) failed: \(error.description)")
+
+                    switch error {
+                    case .noAPIKey, .fileError:
+                        self.updateStatus("")
+                        completion(.failure(error))
+                        return
+                    case .apiError(let code, _) where code == 401 || code == 403:
+                        self.updateStatus("")
+                        completion(.failure(error))
+                        return
+                    default:
+                        break
+                    }
+
+                    if currentRetry < self.maxRetries {
+                        currentRetry += 1
+                        let delay = TranscriptionManager.retryDelay(forAttempt: currentRetry)
+                        self.updateStatus("Retry in \(Int(delay))s... (\(currentRetry)/\(self.maxRetries))")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { attempt() }
+                    } else {
+                        self.updateStatus("")
+                        logError("Streaming transcription failed after \(self.maxRetries + 1) attempts")
+                        completion(.failure(error))
+                    }
+                }
+            }
+        }
+
+        attempt()
+    }
+
+    private func performStreamingRequest(
+        audioURL: URL,
+        onDelta: @escaping (String) -> Void,
+        completion: @escaping (Result<String, TranscriptionError>) -> Void
+    ) {
+        guard let apiKey = apiKey else {
+            completion(.failure(.noAPIKey))
+            return
+        }
+
+        DispatchQueue.main.async { self.isTranscribing = true }
+
+        let audioData: Data
+        do {
+            audioData = try Data(contentsOf: audioURL)
+            logInfo("Streaming transcription: audio file \(audioData.count) bytes")
+        } catch {
+            logError("Error reading audio file: \(error)")
+            DispatchQueue.main.async { self.isTranscribing = false }
+            completion(.failure(.fileError(error.localizedDescription)))
+            return
+        }
+
+        let url = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = requestTimeout
+
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        let isM4A = audioURL.pathExtension.lowercased() == "m4a"
+        request.httpBody = TranscriptionManager.buildMultipartBody(
+            audioData: audioData,
+            boundary: boundary,
+            model: selectedModel,
+            language: selectedLanguage,
+            isM4A: isM4A,
+            stream: true
+        )
+
+        let delegate = SSEDataDelegate(
+            onDelta: onDelta,
+            onComplete: { [weak self] result in
+                DispatchQueue.main.async { self?.isTranscribing = false }
+                completion(result)
+            }
+        )
+
+        let streamSession = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        let task = streamSession.dataTask(with: request)
+        task.resume()
+    }
+
+    // MARK: - Core Request (non-streaming fallback)
 
     private func performTranscriptionRequest(audioURL: URL, completion: @escaping (Result<String, TranscriptionError>) -> Void) {
         guard let apiKey = apiKey else {
@@ -447,7 +563,7 @@ class TranscriptionManager: ObservableObject {
         if postCommandV() {
             logInfo("TranscriptionManager: Auto-inserted transcript via CGEvent")
             updateStatus("")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 self.restorePasteboardItems(previousContents, to: pasteboard)
             }
         } else {
@@ -567,6 +683,149 @@ class TranscriptionManager: ObservableObject {
 
         if !pasteboard.writeObjects(items) {
             logError("Failed to restore clipboard contents")
+        }
+    }
+}
+
+// MARK: - SSE Stream Delegate
+
+/// Parses Server-Sent Events from OpenAI's streaming transcription endpoint.
+/// Events: `transcript.text.delta` (partial text) and `transcript.text.done` (final text).
+final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
+    private let onDelta: (String) -> Void
+    private let onComplete: (Result<String, TranscriptionError>) -> Void
+    private var buffer = Data()
+    private var completedText: String?
+    private var httpStatusCode: Int?
+    private var hasCompleted = false
+
+    init(
+        onDelta: @escaping (String) -> Void,
+        onComplete: @escaping (Result<String, TranscriptionError>) -> Void
+    ) {
+        self.onDelta = onDelta
+        self.onComplete = onComplete
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        if let httpResponse = response as? HTTPURLResponse {
+            httpStatusCode = httpResponse.statusCode
+            logInfo("Streaming transcription response status: \(httpResponse.statusCode)")
+        }
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        // Check for HTTP error (non-streaming JSON error response)
+        if let statusCode = httpStatusCode, statusCode != 200 {
+            buffer.append(data)
+            return
+        }
+
+        buffer.append(data)
+        processBuffer()
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        guard !hasCompleted else { return }
+        hasCompleted = true
+
+        session.invalidateAndCancel()
+
+        if let error = error {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain &&
+               (nsError.code == NSURLErrorTimedOut || nsError.code == NSURLErrorNetworkConnectionLost) {
+                onComplete(.failure(.timeout))
+            } else {
+                onComplete(.failure(.networkError(error)))
+            }
+            return
+        }
+
+        // Handle HTTP error response
+        if let statusCode = httpStatusCode, statusCode != 200 {
+            var errorMessage = "Unknown error"
+            if let errorJson = try? JSONSerialization.jsonObject(with: buffer) as? [String: Any],
+               let errorObj = errorJson["error"] as? [String: Any],
+               let message = errorObj["message"] as? String {
+                errorMessage = message
+            }
+            logError("Streaming transcription API error: \(statusCode) - \(errorMessage)")
+            onComplete(.failure(.apiError(statusCode, errorMessage)))
+            return
+        }
+
+        // Process any remaining data in buffer
+        processBuffer()
+
+        if let text = completedText {
+            logInfo("Streaming transcription completed, length: \(text.count)")
+            onComplete(.success(text))
+        } else {
+            logError("Streaming transcription: stream ended without completion event")
+            onComplete(.failure(.noData))
+        }
+    }
+
+    private func processBuffer() {
+        guard let bufferString = String(data: buffer, encoding: .utf8) else { return }
+
+        // SSE format: lines separated by \n\n, each event has "event:" and "data:" lines
+        let events = bufferString.components(separatedBy: "\n\n")
+
+        // Keep the last incomplete chunk in the buffer
+        if !bufferString.hasSuffix("\n\n") {
+            if let lastIncomplete = events.last {
+                buffer = lastIncomplete.data(using: .utf8) ?? Data()
+            }
+            // Process all complete events (everything except the last incomplete chunk)
+            for event in events.dropLast() {
+                parseSSEEvent(event)
+            }
+        } else {
+            buffer = Data()
+            for event in events where !event.isEmpty {
+                parseSSEEvent(event)
+            }
+        }
+    }
+
+    private func parseSSEEvent(_ eventBlock: String) {
+        let lines = eventBlock.components(separatedBy: "\n")
+        var eventType: String?
+        var dataLines: [String] = []
+
+        for line in lines {
+            if line.hasPrefix("event: ") {
+                eventType = String(line.dropFirst(7))
+            } else if line.hasPrefix("data: ") {
+                dataLines.append(String(line.dropFirst(6)))
+            } else if line == "data: [DONE]" || line == "[DONE]" {
+                return
+            }
+        }
+
+        guard let type = eventType, !dataLines.isEmpty else { return }
+        let dataString = dataLines.joined(separator: "\n")
+
+        guard let jsonData = dataString.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+            return
+        }
+
+        switch type {
+        case "transcript.text.delta":
+            if let delta = json["delta"] as? String {
+                logDebug("Streaming delta: \(delta.count) chars")
+                onDelta(delta)
+            }
+        case "transcript.text.done":
+            if let text = json["text"] as? String {
+                completedText = text
+            }
+        default:
+            logDebug("Streaming SSE event: \(type)")
         }
     }
 }

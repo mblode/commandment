@@ -40,9 +40,6 @@ class AudioManager: NSObject, ObservableObject {
     private let audioQueue = DispatchQueue(label: "co.blode.commandment.audio")
     private var _isRecordingOnAudioQueue = false
 
-    /// Called with PCM16 (Int16) audio chunks at 24kHz mono during recording
-    var onAudioChunk: ((Data) -> Void)?
-
     override init() {
         super.init()
         setupRecordingURL()
@@ -151,25 +148,23 @@ class AudioManager: NSObject, ObservableObject {
         audioEngine.prepare()
 
         volumeMeter.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] (buffer, time) in
-            // Capture callback on the audio thread to avoid racing with main-thread writes
-            let onChunk = self?.onAudioChunk
             self?.audioQueue.async { [weak self] in
                 guard let self = self,
                       let recordingURL = self.recordingURL,
                       self._isRecordingOnAudioQueue else { return }
 
                 var convertedBuffer: AVAudioPCMBuffer?
-                
+
                 if self.converter == nil && inputFormat != whisperFormat {
                     self.converter = AVAudioConverter(from: inputFormat, to: whisperFormat)
                 }
-                
+
                 if let converter = self.converter {
                     let frameCount = AVAudioFrameCount(Float(buffer.frameLength) * Float(24000) / Float(inputFormat.sampleRate))
                     convertedBuffer = AVAudioPCMBuffer(pcmFormat: whisperFormat,
                                                      frameCapacity: frameCount)
                     convertedBuffer?.frameLength = frameCount
-                    
+
                     var error: NSError?
                     var consumed = false
                     let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
@@ -181,11 +176,11 @@ class AudioManager: NSObject, ObservableObject {
                         outStatus.pointee = .haveData
                         return buffer
                     }
-                    
+
                     converter.convert(to: convertedBuffer!,
                                     error: &error,
                                     withInputFrom: inputBlock)
-                    
+
                     if error != nil {
                         logError("AudioManager: Conversion error: \(error!)")
                         return
@@ -193,9 +188,9 @@ class AudioManager: NSObject, ObservableObject {
                 } else {
                     convertedBuffer = buffer
                 }
-                
+
                 guard let finalBuffer = convertedBuffer else { return }
-                
+
                 if self.audioFile == nil {
                     do {
                         self.audioFile = try AVAudioFile(forWriting: recordingURL,
@@ -206,26 +201,11 @@ class AudioManager: NSObject, ObservableObject {
                         return
                     }
                 }
-                
+
                 do {
                     try self.audioFile?.write(from: finalBuffer)
                 } catch {
                     logError("AudioManager: Failed to write buffer: \(error)")
-                }
-
-                // Stream PCM16 chunks for Realtime API
-                if let onChunk,
-                   let floatData = finalBuffer.floatChannelData?[0] {
-                    let frameCount = Int(finalBuffer.frameLength)
-                    var pcm16Data = Data(count: frameCount * 2)
-                    pcm16Data.withUnsafeMutableBytes { rawBuffer in
-                        let int16Buffer = rawBuffer.bindMemory(to: Int16.self)
-                        for i in 0..<frameCount {
-                            let sample = max(-1.0, min(1.0, floatData[i]))
-                            int16Buffer[i] = Int16(sample * 32767)
-                        }
-                    }
-                    onChunk(pcm16Data)
                 }
             }
         }
