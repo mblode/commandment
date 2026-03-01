@@ -27,3 +27,4 @@ logs
 .claude/
 .cursor/
 .vscode/
+.env*.local
