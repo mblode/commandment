@@ -31,8 +31,7 @@ async function getLatestRelease(): Promise<{
     };
   } catch {
     return {
-      downloadUrl:
-        "https://github.com/mblode/commandment/releases/latest",
+      downloadUrl: "https://github.com/mblode/commandment/releases/latest",
       fileSizeMB: "",
       version: "v0.1.10",
     };
@@ -43,44 +42,44 @@ export default async function Page() {
   const { downloadUrl, fileSizeMB, version } = await getLatestRelease();
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
-      <div className="flex flex-col items-center gap-5 px-6 text-center">
+    <div className="relative flex min-h-dvh items-center overflow-hidden bg-[#1c1c1e]">
+      {/* Main content — left-aligned with clamped left padding */}
+      <main className="relative z-10 flex flex-col items-start text-left pl-[clamp(40px,12vw,180px)] pr-10">
         {/* App icon */}
-        <div className="h-24 w-24 overflow-hidden rounded-[22%] shadow-2xl">
+        <div>
           <Image
             src="/app-icon.png"
             alt="Commandment"
-            width={96}
-            height={96}
+            width={80}
+            height={80}
             priority
-            className="h-full w-full object-cover"
+            className="rounded-[22%]"
           />
         </div>
 
         {/* Title */}
-        <h1 className="font-[family-name:var(--font-geist-sans)] text-[28px] font-semibold tracking-tight text-white">
+        <h1 className="mt-6 text-[38px] font-bold leading-none tracking-[-0.035em] text-[#f5f5f7]">
           Commandment
         </h1>
 
-        {/* Tagline */}
-        <p className="-mt-3 text-[17px] font-medium text-white/90">
+        {/* Subtitle */}
+        <p className="mt-[10px] text-[17px] font-medium tracking-normal text-[#c5c5ca]">
           Voice to text, instantly.
         </p>
 
         {/* Description */}
-        <p className="-mt-2 max-w-xs text-[15px] leading-relaxed text-white/50">
+        <p className="mt-5 text-[14px] font-light leading-[1.7] text-[#98989d]">
           Just press a shortcut and speak.
           <br />
           BYO OpenAI API key — no subscription required.
         </p>
 
         {/* Download row */}
-        <div className="mt-1 flex items-center gap-3">
+        <div className="mt-7 inline-flex items-center gap-[14px]">
           <a
             href={downloadUrl}
-            className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-[15px] font-semibold text-black transition-opacity hover:opacity-80 active:opacity-60"
+            className="inline-flex items-center gap-[7px] rounded-lg bg-white px-[18px] py-[9px] text-[13px] font-semibold text-black transition-opacity hover:opacity-80 active:opacity-60"
           >
-            {/* Apple logo */}
             <svg
               width="12"
               height="14"
@@ -94,18 +93,25 @@ export default async function Page() {
             Download for macOS
           </a>
           {fileSizeMB && (
-            <span className="text-[13px] text-white/40">{fileSizeMB}</span>
+            <span className="text-[13px] font-normal text-[#636366]">
+              {fileSizeMB}
+            </span>
           )}
         </div>
 
-        {/* Version badge */}
-        <span className="flex items-center gap-2 text-[13px] text-white/35">
-          <span className="rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/60">
+        {/* Version */}
+        <span className="mt-3 text-[12px] text-[#636366]">
+          <span className="relative top-[-0.5px] mr-[6px] inline-block rounded-full bg-white/[0.06] px-[7px] py-[2px] align-middle text-[9px] font-medium uppercase tracking-[0.06em] text-[#8e8e93]">
             Beta
           </span>
           {version} · Requires macOS 15
         </span>
-      </div>
-    </main>
+      </main>
+
+      {/* Copyright */}
+      <span className="absolute bottom-7 left-[clamp(40px,12vw,180px)] text-[12px] text-[#48484a]">
+        © 2026 Matthew Blode
+      </span>
+    </div>
   );
 }
