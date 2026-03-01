@@ -113,6 +113,9 @@ jobs:
             -exportPath /tmp/commandment-build/export \
             -exportOptionsPlist /tmp/ExportOptions.plist
 
+      - name: Generate DMG background
+        run: swift installer/make-dmg-bg.swift
+
       - name: Install create-dmg
         run: brew install create-dmg
 
@@ -120,12 +123,15 @@ jobs:
         run: |
           create-dmg \
             --volname "Commandment" \
+            --background "installer/dmg-background.png" \
             --window-pos 200 120 \
-            --window-size 600 400 \
+            --window-size 700 460 \
             --icon-size 128 \
-            --icon "Commandment.app" 150 190 \
-            --app-drop-link 450 190 \
+            --icon "Commandment.app" 175 230 \
+            --app-drop-link 525 230 \
             --hide-extension "Commandment.app" \
+            --text-size 14 \
+            --volicon "/tmp/commandment-build/export/Commandment.app/Contents/Resources/AppIcon.icns" \
             --no-internet-enable \
             "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg" \
             "/tmp/commandment-build/export/Commandment.app" \

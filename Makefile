@@ -5,13 +5,15 @@ ARCHIVE_PATH = $(DERIVED_DATA)/Commandment.xcarchive
 EXPORT_PATH = $(DERIVED_DATA)/export
 APP_NAME = Commandment
 DMG_PATH = $(DERIVED_DATA)/$(APP_NAME).dmg
+DMG_BG_SCRIPT = installer/make-dmg-bg.swift
+DMG_BG        = installer/dmg-background.png
 BUNDLE_ID = co.blode.commandment
 VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
 
 CODESIGN_IDENTITY ?= Developer ID Application
 TEAM_ID ?= $(APPLE_TEAM_ID)
 
-.PHONY: build archive export dmg notarize clean
+.PHONY: build archive export dmg-background dmg notarize clean
 
 build:
 	xcodebuild -scheme $(SCHEME) \
@@ -59,16 +61,23 @@ export: archive
 		-exportPath $(EXPORT_PATH) \
 		-exportOptionsPlist $(DERIVED_DATA)/ExportOptions.plist
 
-dmg: export
+dmg-background:
+	@echo "Generating DMG background..."
+	swift $(DMG_BG_SCRIPT)
+
+dmg: export dmg-background
 	@rm -f $(DMG_PATH)
 	create-dmg \
 		--volname "$(APP_NAME)" \
+		--background "$(DMG_BG)" \
 		--window-pos 200 120 \
-		--window-size 600 400 \
+		--window-size 700 460 \
 		--icon-size 128 \
-		--icon "$(APP_NAME).app" 150 190 \
-		--app-drop-link 450 190 \
+		--icon "$(APP_NAME).app" 175 230 \
+		--app-drop-link 525 230 \
 		--hide-extension "$(APP_NAME).app" \
+		--text-size 14 \
+		--volicon "$(EXPORT_PATH)/$(APP_NAME).app/Contents/Resources/AppIcon.icns" \
 		--no-internet-enable \
 		$(DMG_PATH) \
 		$(EXPORT_PATH)/$(APP_NAME).app || test -f $(DMG_PATH)

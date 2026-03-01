@@ -16,6 +16,7 @@ Packages/
 # Build artifacts
 /tmp/commandment-build/
 *.dmg
+installer/dmg-background.png
 
 # Secrets
 .env
