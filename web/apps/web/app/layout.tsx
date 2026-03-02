@@ -19,6 +19,9 @@ export const metadata: Metadata = {
       "Voice to text, instantly. BYO OpenAI API key — no subscription required.",
     siteName: "Commandment",
   },
+  appleWebApp: {
+    title: "Commandment",
+  },
 };
 
 export default function RootLayout({
