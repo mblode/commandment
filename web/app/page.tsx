@@ -101,9 +101,6 @@ export default async function Page() {
 
         {/* Version */}
         <span className="mt-3 text-[12px] text-[#636366]">
-          <span className="relative top-[-0.5px] mr-[6px] inline-block rounded-full bg-white/[0.06] px-[7px] py-[2px] align-middle text-[9px] font-medium uppercase tracking-[0.06em] text-[#8e8e93]">
-            Beta
-          </span>
           {version} · Requires macOS 15
         </span>
       </main>
