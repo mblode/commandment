@@ -2,16 +2,35 @@ import XCTest
 @testable import Commandment
 
 final class TranscriptionRetryTests: XCTestCase {
+    func test_transcribeWithRetry_noAPIKey_failsImmediately() {
+        let manager = TranscriptionManager()
+        let expectation = expectation(description: "completion")
 
-    func test_retryDelay_attempt1() {
-        XCTAssertEqual(TranscriptionManager.retryDelay(forAttempt: 1), 1.0)
+        manager.transcribeWithRetry(audioURL: URL(fileURLWithPath: "/tmp/does-not-matter.wav")) { result in
+            guard case .failure(let error) = result, case .noAPIKey = error else {
+                return XCTFail("Expected noAPIKey failure")
+            }
+            expectation.fulfill()
+        }
+
+        wait(for: [expectation], timeout: 1.0)
     }
 
-    func test_retryDelay_attempt2() {
-        XCTAssertEqual(TranscriptionManager.retryDelay(forAttempt: 2), 2.0)
-    }
+    func test_transcribeStreaming_noAPIKey_failsImmediately() {
+        let manager = TranscriptionManager()
+        let expectation = expectation(description: "completion")
 
-    func test_retryDelay_attempt3() {
-        XCTAssertEqual(TranscriptionManager.retryDelay(forAttempt: 3), 4.0)
+        manager.transcribeStreaming(
+            audioURL: URL(fileURLWithPath: "/tmp/does-not-matter.wav"),
+            onDelta: { _ in XCTFail("Expected no deltas when API key is missing") },
+            completion: { result in
+                guard case .failure(let error) = result, case .noAPIKey = error else {
+                    return XCTFail("Expected noAPIKey failure")
+                }
+                expectation.fulfill()
+            }
+        )
+
+        wait(for: [expectation], timeout: 1.0)
     }
 }

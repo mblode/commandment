@@ -70,10 +70,6 @@ class TranscriptionManager: ObservableObject {
 
     // MARK: - Pure Static Helpers
 
-    static func retryDelay(forAttempt attempt: Int) -> TimeInterval {
-        return pow(2.0, Double(attempt - 1))
-    }
-
     static func buildMultipartBody(
         audioData: Data,
         boundary: String,
@@ -131,8 +127,6 @@ class TranscriptionManager: ObservableObject {
     }
     private var apiKey: String?
 
-    // Retry configuration
-    private let maxRetries = 3
     private let requestTimeout: TimeInterval = 15.0
 
     // Persistent session for connection reuse (TLS session resumption, HTTP/2 multiplexing)
@@ -235,7 +229,7 @@ class TranscriptionManager: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
-    // MARK: - Transcription with Retry
+    // MARK: - Transcription
 
     private func updateStatus(_ message: String) {
         DispatchQueue.main.async { self.statusMessage = message }
@@ -256,58 +250,20 @@ class TranscriptionManager: ObservableObject {
     }
 
     func transcribeWithRetry(audioURL: URL, completion: @escaping (Result<String, TranscriptionError>) -> Void) {
-        var currentRetry = 0
         updateStatus("Starting transcription...")
+        logInfo("Attempting transcription")
 
-        func attemptTranscription() {
-            logInfo("Attempting transcription (try \(currentRetry + 1) of \(self.maxRetries + 1))")
-
-            if currentRetry > 0 {
-                self.updateStatus("Retry \(currentRetry) of \(self.maxRetries)...")
-            }
-
-            self.performTranscriptionRequest(audioURL: audioURL) { result in
-                switch result {
-                case .success(let text):
-                    self.updateStatus("")
-                    completion(.success(text))
-
-                case .failure(let error):
-                    logError("Transcription attempt \(currentRetry + 1) failed: \(error.description)")
-
-                    // Don't retry errors that won't resolve themselves
-                    switch error {
-                    case .noAPIKey, .fileError:
-                        self.updateStatus("")
-                        completion(.failure(error))
-                        return
-                    case .apiError(let code, _) where code == 401 || code == 403:
-                        self.updateStatus("")
-                        completion(.failure(error))
-                        return
-                    default:
-                        break
-                    }
-
-                    if currentRetry < self.maxRetries {
-                        currentRetry += 1
-
-                        let delay = TranscriptionManager.retryDelay(forAttempt: currentRetry)
-                        self.updateStatus("Retry in \(Int(delay))s... (\(currentRetry)/\(self.maxRetries))")
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                            attemptTranscription()
-                        }
-                    } else {
-                        self.updateStatus("")
-                        logError("Transcription failed after \(self.maxRetries + 1) attempts")
-                        completion(.failure(error))
-                    }
-                }
+        performTranscriptionRequest(audioURL: audioURL) { result in
+            switch result {
+            case .success(let text):
+                self.updateStatus("")
+                completion(.success(text))
+            case .failure(let error):
+                self.updateStatus("")
+                logError("Transcription failed: \(error.description)")
+                completion(.failure(error))
             }
         }
-
-        attemptTranscription()
     }
 
     // MARK: - Streaming Transcription
@@ -317,53 +273,36 @@ class TranscriptionManager: ObservableObject {
         onDelta: @escaping (String) -> Void,
         completion: @escaping (Result<String, TranscriptionError>) -> Void
     ) {
-        var currentRetry = 0
         updateStatus("Starting transcription...")
+        logInfo("Streaming transcription attempt 1 of 1")
 
-        func attempt() {
-            logInfo("Streaming transcription attempt \(currentRetry + 1) of \(self.maxRetries + 1)")
+        performStreamingRequest(audioURL: audioURL, onDelta: onDelta) { result in
+            switch result {
+            case .success(let text):
+                self.updateStatus("")
+                completion(.success(text))
 
-            if currentRetry > 0 {
-                self.updateStatus("Retry \(currentRetry) of \(self.maxRetries)...")
-            }
+            case .failure(let error):
+                logError("Streaming transcription failed: \(error.description)")
 
-            self.performStreamingRequest(audioURL: audioURL, onDelta: onDelta) { result in
-                switch result {
-                case .success(let text):
+                switch error {
+                case .noAPIKey, .fileError:
                     self.updateStatus("")
-                    completion(.success(text))
-
-                case .failure(let error):
-                    logError("Streaming transcription attempt \(currentRetry + 1) failed: \(error.description)")
-
-                    switch error {
-                    case .noAPIKey, .fileError:
-                        self.updateStatus("")
-                        completion(.failure(error))
-                        return
-                    case .apiError(let code, _) where code == 401 || code == 403:
-                        self.updateStatus("")
-                        completion(.failure(error))
-                        return
-                    default:
-                        break
-                    }
-
-                    if currentRetry < self.maxRetries {
-                        currentRetry += 1
-                        let delay = TranscriptionManager.retryDelay(forAttempt: currentRetry)
-                        self.updateStatus("Retry in \(Int(delay))s... (\(currentRetry)/\(self.maxRetries))")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { attempt() }
-                    } else {
-                        self.updateStatus("")
-                        logError("Streaming transcription failed after \(self.maxRetries + 1) attempts")
-                        completion(.failure(error))
-                    }
+                    completion(.failure(error))
+                    return
+                case .apiError(let code, _) where code == 401 || code == 403:
+                    self.updateStatus("")
+                    completion(.failure(error))
+                    return
+                default:
+                    break
                 }
+
+                self.updateStatus("")
+                logInfo("Falling back to non-streaming transcription")
+                self.transcribeWithRetry(audioURL: audioURL, completion: completion)
             }
         }
-
-        attempt()
     }
 
     private func performStreamingRequest(
@@ -716,6 +655,7 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        logDebug("Streaming transcription: received chunk \(data.count) bytes (total \(buffer.count + data.count))")
         // Check for HTTP error (non-streaming JSON error response)
         if let statusCode = httpStatusCode, statusCode != 200 {
             buffer.append(data)
@@ -728,7 +668,6 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard !hasCompleted else { return }
-        hasCompleted = true
 
         session.invalidateAndCancel()
 
@@ -736,9 +675,9 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
             let nsError = error as NSError
             if nsError.domain == NSURLErrorDomain &&
                (nsError.code == NSURLErrorTimedOut || nsError.code == NSURLErrorNetworkConnectionLost) {
-                onComplete(.failure(.timeout))
+                finish(.failure(.timeout))
             } else {
-                onComplete(.failure(.networkError(error)))
+                finish(.failure(.networkError(error)))
             }
             return
         }
@@ -752,40 +691,57 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
                 errorMessage = message
             }
             logError("Streaming transcription API error: \(statusCode) - \(errorMessage)")
-            onComplete(.failure(.apiError(statusCode, errorMessage)))
+            finish(.failure(.apiError(statusCode, errorMessage)))
             return
         }
 
-        // Process any remaining data in buffer
-        processBuffer()
+        // Snapshot buffer content before processBuffer clears it
+        let rawBuffer = buffer
+        let rawContent = String(data: rawBuffer, encoding: .utf8) ?? ""
+        logDebug("Streaming transcription: completing, buffer \(rawBuffer.count) bytes: \(rawContent.prefix(500))")
+
+        // Flush the entire buffer including any trailing incomplete chunk
+        processBuffer(isFinal: true)
 
         if let text = completedText {
             logInfo("Streaming transcription completed, length: \(text.count)")
-            onComplete(.success(text))
+            finish(.success(text))
         } else {
+            // Fallback: response may be plain JSON (e.g. {"text":"..."}) rather than SSE
+            if !rawContent.isEmpty,
+               let jsonData = rawContent.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let text = json["text"] as? String {
+                logInfo("Streaming transcription: plain JSON fallback, length: \(text.count)")
+                finish(.success(text))
+                return
+            }
             logError("Streaming transcription: stream ended without completion event")
-            onComplete(.failure(.noData))
+            finish(.failure(.noData))
         }
     }
 
-    private func processBuffer() {
-        guard let bufferString = String(data: buffer, encoding: .utf8) else { return }
+    private func processBuffer(isFinal: Bool = false) {
+        guard var bufferString = String(data: buffer, encoding: .utf8), !bufferString.isEmpty else { return }
+        bufferString = bufferString
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
 
         // SSE format: lines separated by \n\n, each event has "event:" and "data:" lines
         let events = bufferString.components(separatedBy: "\n\n")
 
-        // Keep the last incomplete chunk in the buffer
-        if !bufferString.hasSuffix("\n\n") {
-            if let lastIncomplete = events.last {
-                buffer = lastIncomplete.data(using: .utf8) ?? Data()
-            }
-            // Process all complete events (everything except the last incomplete chunk)
-            for event in events.dropLast() {
+        // On the final flush, process everything including any trailing incomplete chunk.
+        // During streaming, keep the last incomplete chunk in the buffer for the next delivery.
+        if isFinal || bufferString.hasSuffix("\n\n") {
+            buffer = Data()
+            for event in events where !event.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 parseSSEEvent(event)
             }
         } else {
-            buffer = Data()
-            for event in events where !event.isEmpty {
+            if let lastIncomplete = events.last {
+                buffer = lastIncomplete.data(using: .utf8) ?? Data()
+            }
+            for event in events.dropLast() {
                 parseSSEEvent(event)
             }
         }
@@ -797,22 +753,31 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
         var dataLines: [String] = []
 
         for line in lines {
-            if line.hasPrefix("event: ") {
-                eventType = String(line.dropFirst(7))
-            } else if line.hasPrefix("data: ") {
-                dataLines.append(String(line.dropFirst(6)))
-            } else if line == "data: [DONE]" || line == "[DONE]" {
-                return
+            let normalizedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if normalizedLine.hasPrefix("event:") {
+                let value = String(normalizedLine.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
+                eventType = value
+            } else if normalizedLine.hasPrefix("data:") {
+                var value = String(normalizedLine.dropFirst(5))
+                if value.hasPrefix(" ") {
+                    value.removeFirst()
+                }
+                if value.trimmingCharacters(in: .whitespacesAndNewlines) == "[DONE]" { return }
+                dataLines.append(value.trimmingCharacters(in: .whitespacesAndNewlines))
             }
         }
 
-        guard let type = eventType, !dataLines.isEmpty else { return }
+        guard !dataLines.isEmpty else { return }
         let dataString = dataLines.joined(separator: "\n")
 
         guard let jsonData = dataString.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+            logDebug("Streaming transcription: failed to parse SSE data block: \(dataString.prefix(200))")
             return
         }
+
+        // Support both the SSE `event:` field and an embedded `type` key in the JSON payload
+        let type = eventType ?? (json["type"] as? String) ?? ""
 
         switch type {
         case "transcript.text.delta":
@@ -825,7 +790,15 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
                 completedText = text
             }
         default:
-            logDebug("Streaming SSE event: \(type)")
+            if !type.isEmpty {
+                logDebug("Streaming SSE event: \(type)")
+            }
         }
+    }
+
+    private func finish(_ result: Result<String, TranscriptionError>) {
+        guard !hasCompleted else { return }
+        hasCompleted = true
+        onComplete(result)
     }
 }

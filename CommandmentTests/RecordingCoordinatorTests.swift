@@ -209,6 +209,38 @@ final class RecordingCoordinatorTests: XCTestCase {
         XCTAssertFalse(transcribingStates.isEmpty)
     }
 
+    func test_holdMode_keyUpBeforeStart_stopsAfterStartCompletes() async throws {
+        let notifications = NotificationCenter()
+        let overlay = OverlaySpy()
+        let audio = MockAudioManager()
+        audio.setRecordingBeforeCompletion = false
+        audio.startCompletionDelay = 0.05
+        let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
+        transcription.streamingResult = .success("race condition fixed")
+
+        audio.nextStopURL = try makeAudioFile(byteCount: 9_000, pathExtension: "wav")
+
+        let pasteExpectation = expectation(description: "transcript pasted")
+        transcription.onPaste = { _ in pasteExpectation.fulfill() }
+
+        let coordinator = RecordingCoordinator(
+            audioManager: audio,
+            transcriptionManager: transcription,
+            notificationCenter: notifications,
+            overlay: overlay,
+            minimumRecordingDuration: 0
+        )
+        withExtendedLifetime(coordinator) {
+            notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
+            notifications.post(name: NSNotification.Name("HotkeyKeyUp"), object: nil)
+        }
+
+        await fulfillment(of: [pasteExpectation], timeout: 2.0)
+
+        XCTAssertEqual(audio.stopRecordingCallCount, 1)
+        XCTAssertEqual(transcription.streamingCallCount, 1)
+    }
+
     private func makeAudioFile(byteCount: Int, pathExtension: String) throws -> URL {
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("commandment-test-\(UUID().uuidString)")
@@ -225,13 +257,36 @@ private final class MockAudioManager: RecordingAudioManaging {
 
     var onStartRecording: (() -> Void)?
     var nextStopURL: URL?
+    var startCompletionDelay: TimeInterval = 0
+    var setRecordingBeforeCompletion = true
 
     private(set) var stopRecordingCallCount = 0
 
     func startRecording(completion: ((Bool) -> Void)?) {
-        isRecording = true
         onStartRecording?()
-        completion?(true)
+
+        if setRecordingBeforeCompletion {
+            isRecording = true
+            if startCompletionDelay > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + startCompletionDelay) {
+                    completion?(true)
+                }
+            } else {
+                completion?(true)
+            }
+            return
+        }
+
+        let completeStart = { [weak self] in
+            self?.isRecording = true
+            completion?(true)
+        }
+
+        if startCompletionDelay > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + startCompletionDelay, execute: completeStart)
+        } else {
+            completeStart()
+        }
     }
 
     func stopRecording() -> URL? {

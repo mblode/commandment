@@ -13,6 +13,8 @@ class RecordingCoordinator: ObservableObject {
     private var delayedStopWork: DispatchWorkItem?
     private var lastSettingsPromptDate: Date?
     private let settingsPromptCooldown: TimeInterval = 5
+    private var isStartingRecording = false
+    private var stopRequestedBeforeStart = false
 
     init(
         audioManager: RecordingAudioManaging,
@@ -30,20 +32,30 @@ class RecordingCoordinator: ObservableObject {
 
         notificationCenter.publisher(for: NSNotification.Name("HotkeyKeyDown"))
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.startRecordingFromHotkey() }
+            .sink { [weak self] _ in self?.handleHotkeyDown() }
             .store(in: &cancellables)
 
         notificationCenter.publisher(for: NSNotification.Name("HotkeyKeyUp"))
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.stopRecordingFromHotkey() }
+            .sink { [weak self] _ in self?.handleHotkeyUp() }
             .store(in: &cancellables)
+    }
+
+    // MARK: - Hotkey Handling
+
+    private func handleHotkeyDown() {
+        startRecordingFromHotkey()
+    }
+
+    private func handleHotkeyUp() {
+        stopRecordingFromHotkey()
     }
 
     // MARK: - Start Recording
 
     private func startRecordingFromHotkey() {
-        guard !audioManager.isRecording else {
-            logDebug("RecordingCoordinator: Already recording, ignoring key-down")
+        guard !audioManager.isRecording && !isStartingRecording else {
+            logDebug("RecordingCoordinator: Recording already active or starting, ignoring key-down")
             return
         }
 
@@ -52,12 +64,23 @@ class RecordingCoordinator: ObservableObject {
             return
         }
 
+        delayedStopWork?.cancel()
+        delayedStopWork = nil
+        stopRequestedBeforeStart = false
+        isStartingRecording = true
+
         audioManager.startRecording { [weak self] (didStart: Bool) in
             guard let self else { return }
+            self.isStartingRecording = false
             if didStart {
                 self.recordingStartTime = Date()
                 self.overlay.show(state: .recording)
+                if self.stopRequestedBeforeStart {
+                    self.stopRequestedBeforeStart = false
+                    self.stopRecordingFromHotkey()
+                }
             } else {
+                self.stopRequestedBeforeStart = false
                 self.overlay.dismiss()
                 if self.audioManager.isMicrophonePermissionDenied {
                     logInfo("RecordingCoordinator: Recording start blocked by missing microphone permission")
@@ -72,37 +95,44 @@ class RecordingCoordinator: ObservableObject {
     // MARK: - Stop Recording
 
     private func stopRecordingFromHotkey() {
-        guard audioManager.isRecording else {
-            logDebug("RecordingCoordinator: Not recording, ignoring key-up")
+        if audioManager.isRecording {
+            delayedStopWork?.cancel()
+            delayedStopWork = nil
+
+            // Enforce minimum recording duration so audio buffers have time to create the file
+            if let startTime = recordingStartTime {
+                let elapsed = Date().timeIntervalSince(startTime)
+                if elapsed < minimumRecordingDuration {
+                    let remaining = minimumRecordingDuration - elapsed
+                    logInfo("RecordingCoordinator: Recording too short (\(Int(elapsed * 1000))ms), delaying stop by \(Int(remaining * 1000))ms")
+                    let work = DispatchWorkItem { [weak self] in
+                        self?.delayedStopWork = nil
+                        self?.performStopRecording()
+                    }
+                    delayedStopWork = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + remaining, execute: work)
+                    return
+                }
+            }
+
+            performStopRecording()
             return
         }
 
-        delayedStopWork?.cancel()
-        delayedStopWork = nil
-
-        // Enforce minimum recording duration so audio buffers have time to create the file
-        if let startTime = recordingStartTime {
-            let elapsed = Date().timeIntervalSince(startTime)
-            if elapsed < minimumRecordingDuration {
-                let remaining = minimumRecordingDuration - elapsed
-                logInfo("RecordingCoordinator: Recording too short (\(Int(elapsed * 1000))ms), delaying stop by \(Int(remaining * 1000))ms")
-                let work = DispatchWorkItem { [weak self] in
-                    self?.delayedStopWork = nil
-                    self?.performStopRecording()
-                }
-                delayedStopWork = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + remaining, execute: work)
-                return
-            }
+        if isStartingRecording {
+            stopRequestedBeforeStart = true
+            logDebug("RecordingCoordinator: Stop requested before recording started; will stop once start completes")
+        } else {
+            logDebug("RecordingCoordinator: Not recording, ignoring key-up")
         }
-
-        performStopRecording()
     }
 
     private func performStopRecording() {
         delayedStopWork?.cancel()
         delayedStopWork = nil
         recordingStartTime = nil
+        stopRequestedBeforeStart = false
+        isStartingRecording = false
 
         overlay.show(state: .processing)
 
@@ -192,7 +222,7 @@ class RecordingCoordinator: ObservableObject {
         let alert = NSAlert()
         alert.messageText = "Transcription Error"
         alert.informativeText = """
-        Failed to transcribe audio after multiple attempts.
+        Failed to transcribe audio.
 
         Last error: \(error.description)
 
