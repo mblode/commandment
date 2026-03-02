@@ -109,9 +109,15 @@ export default async function Page() {
       </main>
 
       {/* Copyright */}
-      <span className="absolute bottom-7 left-[clamp(40px,12vw,180px)] text-[12px] text-[#48484a]">
-        © 2026 Matthew Blode
-      </span>
+      <p className="absolute bottom-7 left-[clamp(40px,12vw,180px)] text-[12px] text-[#48484a]">
+        © {new Date().getFullYear()} Matthew Blode ·{" "}
+        <a
+          href="https://github.com/mblode/commandment"
+          className="hover:text-[#636366] transition-colors"
+        >
+          GitHub
+        </a>
+      </p>
     </div>
   );
 }
