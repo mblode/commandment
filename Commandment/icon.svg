@@ -10,7 +10,7 @@
     </clipPath>
   </defs>
 
-  <rect width="1024" height="1024" fill="url(#bgGradient)" clip-path="url(#roundedCorner)" />
+  <rect width="1024" height="1024" fill="url(#bgGradient)" />
 
   <!-- Whisper wave arcs behind microphone -->
   <path
