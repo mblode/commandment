@@ -8,48 +8,19 @@
     <description>Commandment updates</description>
     <language>en</language>
     <item>
-      <title>Version 0.1.9</title>
-      <pubDate>Tue, 25 Feb 2026 00:00:00 +0000</pubDate>
-      <link>https://github.com/mblode/commandment/releases/tag/v0.1.9</link>
-      <sparkle:version>0.1.9</sparkle:version>
-      <sparkle:shortVersionString>0.1.9</sparkle:shortVersionString>
+      <title>Version 0.1.12</title>
+      <pubDate>Wed, 04 Mar 2026 00:46:15 +0000</pubDate>
+      <link>https://github.com/mblode/commandment/releases/tag/v0.1.12</link>
+      <sparkle:version>0.1.12</sparkle:version>
+      <sparkle:shortVersionString>0.1.12</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/mblode/commandment/releases/download/v0.1.9/Commandment-0.1.9.dmg"
-        sparkle:version="0.1.9"
-        sparkle:shortVersionString="0.1.9"
+        url="https://github.com/mblode/commandment/releases/download/v0.1.12/Commandment-0.1.12.dmg"
+        sparkle:version="0.1.12"
+        sparkle:shortVersionString="0.1.12"
+        sparkle:edSignature="ZWRGohBd8gt1ZUdn/ej7BoGzFRXEp7jyXFsjaelX/QmOrW9NODxLdQaW3pxnVXVNq5sEnJJzZvCxLHM9KWTNDQ=="
         type="application/octet-stream"
-        length="0" />
-    </item>
-    <item>
-      <title>Version 0.1.8</title>
-      <pubDate>Tue, 24 Feb 2026 00:13:16 +0000</pubDate>
-      <link>https://github.com/mblode/commandment/releases/tag/v0.1.8</link>
-      <sparkle:version>0.1.8</sparkle:version>
-      <sparkle:shortVersionString>0.1.8</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/mblode/commandment/releases/download/v0.1.8/Commandment-0.1.8.dmg"
-        sparkle:version="0.1.8"
-        sparkle:shortVersionString="0.1.8"
-        sparkle:edSignature="gfh5jVrl4Id5uQTIfyIGhtSypbc9YdZtqPBCJt5LUq8/aDRRp/EjnfXFhcJua3ij/kN9cbJiaW8qQoEwoXXDAQ=="
-        type="application/octet-stream"
-        length="1938268" />
-    </item>
-    <item>
-      <title>Version 0.1.7</title>
-      <pubDate>Fri, 20 Feb 2026 03:32:59 +0000</pubDate>
-      <link>https://github.com/mblode/commandment/releases/tag/v0.1.7</link>
-      <sparkle:version>0.1.7</sparkle:version>
-      <sparkle:shortVersionString>0.1.7</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>15.2</sparkle:minimumSystemVersion>
-      <enclosure
-        url="https://github.com/mblode/commandment/releases/download/v0.1.7/Commandment-0.1.7.dmg"
-        sparkle:version="0.1.7"
-        sparkle:shortVersionString="0.1.7"
-        sparkle:edSignature="zP8VHEI9uW9kJh65RZjvsWOJEsSxavjs9eMKsDIQKJpq9YYJ0oyjpPjx7cEe+9o3sQeJ/zXVGs8V2P+sDa5NDw=="
-        type="application/octet-stream"
-        length="1926887" />
+        length="2360687" />
     </item>
   </channel>
 </rss>
