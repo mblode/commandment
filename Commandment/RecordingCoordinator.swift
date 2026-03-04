@@ -158,11 +158,8 @@ class RecordingCoordinator: ObservableObject {
         var accumulatedTranscript = ""
         transcriptionManager.transcribeStreaming(
             audioURL: recordingURL,
-            onDelta: { [weak self] delta in
+            onDelta: { delta in
                 accumulatedTranscript += delta
-                DispatchQueue.main.async {
-                    self?.overlay.show(state: .transcribing(accumulatedTranscript))
-                }
             },
             completion: { [weak self] result in
                 DispatchQueue.main.async {

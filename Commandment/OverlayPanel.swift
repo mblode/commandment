@@ -130,14 +130,11 @@ struct OverlayContentView: View {
                 Text("Recording...")
                     .foregroundStyle(.primary)
 
-            case .transcribing(let partialText):
-                Image(systemName: "waveform")
-                    .foregroundStyle(.red)
-                    .symbolEffect(.variableColor.iterative)
-                Text(partialText.suffix(60))
+            case .transcribing:
+                ProgressView()
+                    .controlSize(.small)
+                Text("Transcribing...")
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .truncationMode(.head)
 
             case .processing:
                 ProgressView()
