@@ -9,7 +9,7 @@
     <language>en</language>
     <item>
       <title>Version 0.1.12</title>
-      <pubDate>Wed, 04 Mar 2026 00:46:15 +0000</pubDate>
+      <pubDate>Wed, 04 Mar 2026 00:52:05 +0000</pubDate>
       <link>https://github.com/mblode/commandment/releases/tag/v0.1.12</link>
       <sparkle:version>0.1.12</sparkle:version>
       <sparkle:shortVersionString>0.1.12</sparkle:shortVersionString>
@@ -18,9 +18,9 @@
         url="https://github.com/mblode/commandment/releases/download/v0.1.12/Commandment-0.1.12.dmg"
         sparkle:version="0.1.12"
         sparkle:shortVersionString="0.1.12"
-        sparkle:edSignature="ZWRGohBd8gt1ZUdn/ej7BoGzFRXEp7jyXFsjaelX/QmOrW9NODxLdQaW3pxnVXVNq5sEnJJzZvCxLHM9KWTNDQ=="
+        sparkle:edSignature="+YbU7D+XRy6o/0LD6r+CuXmClB9MStHy6OJ+5TOcRvo6T0qXCThLmKHDvu4xcm/w/U+O1qeJWAW8w2ujixAmCA=="
         type="application/octet-stream"
-        length="2360687" />
+        length="2360863" />
     </item>
   </channel>
 </rss>
