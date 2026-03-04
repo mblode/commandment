@@ -309,6 +309,7 @@ guard let cgImage = ctx.makeImage() else {
     exit(1)
 }
 let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
+bitmapRep.size = NSSize(width: W / 2, height: H / 2) // 144 DPI — marks image as @2x retina
 guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
     fputs("error: could not encode PNG\n", stderr)
     exit(1)
