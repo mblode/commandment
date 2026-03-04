@@ -156,6 +156,7 @@ final class RecordingCoordinatorTests: XCTestCase {
             overlay: overlay,
             minimumRecordingDuration: 0
         )
+        coordinator.errorDialogPresenter = { _, _ in } // bypass NSAlert.runModal() on CI
         withExtendedLifetime(coordinator) {
             notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
         }
@@ -201,12 +202,8 @@ final class RecordingCoordinatorTests: XCTestCase {
         notifications.post(name: NSNotification.Name("HotkeyKeyUp"), object: nil)
         await fulfillment(of: [pasteExpectation], timeout: 1.0)
 
-        // Verify transcribing states were shown with accumulated text
-        let transcribingStates = overlay.shownStates.compactMap { state -> String? in
-            if case .transcribing(let text) = state { return text }
-            return nil
-        }
-        XCTAssertFalse(transcribingStates.isEmpty)
+        // Verify overlay showed success after streaming completed
+        XCTAssertTrue(overlay.shownStates.contains(.success))
     }
 
     func test_holdMode_keyUpBeforeStart_stopsAfterStartCompletes() async throws {

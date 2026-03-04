@@ -15,6 +15,7 @@ class RecordingCoordinator: ObservableObject {
     private let settingsPromptCooldown: TimeInterval = 5
     private var isStartingRecording = false
     private var stopRequestedBeforeStart = false
+    var errorDialogPresenter: ((URL, TranscriptionError) -> Void)?
 
     init(
         audioManager: RecordingAudioManaging,
@@ -214,6 +215,10 @@ class RecordingCoordinator: ObservableObject {
     }
 
     private func showTranscriptionErrorWithOptions(recordingURL: URL, error: TranscriptionError) {
+        if let errorDialogPresenter {
+            errorDialogPresenter(recordingURL, error)
+            return
+        }
         logInfo("Showing transcription error dialog with options")
 
         let alert = NSAlert()

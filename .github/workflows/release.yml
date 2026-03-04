@@ -43,6 +43,7 @@ jobs:
             build
 
       - name: Test
+        timeout-minutes: 10
         run: |
           xcodebuild -scheme Commandment \
             -configuration Debug \
