@@ -76,7 +76,7 @@ class RecordingCoordinator: ObservableObject {
 
         // Connect Realtime API WebSocket before recording starts
         let client = makeRealtimeClient()
-        client.connect(apiKey: apiKey, model: transcriptionManager.selectedModel.modelID)
+        client.connect(apiKey: apiKey, model: transcriptionManager.selectedModel.modelID, language: transcriptionManager.selectedLanguage.rawValue)
         self.realtimeClient = client
         audioManager.audioChunkHandler = { [weak client] pcm16Data in
             client?.sendAudioChunk(pcm16Data)

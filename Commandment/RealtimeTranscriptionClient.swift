@@ -2,7 +2,7 @@ import Foundation
 
 /// Protocol for testability — allows mocking the Realtime client in unit tests.
 protocol RealtimeTranscribing: AnyObject {
-    func connect(apiKey: String, model: String)
+    func connect(apiKey: String, model: String, language: String)
     func sendAudioChunk(_ pcm16Data: Data)
     func commitAndTranscribe(
         onDelta: @escaping (String) -> Void,
@@ -44,11 +44,11 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
     private let lock = NSLock()
 
     /// Connect to the Realtime API.
-    func connect(apiKey: String, model: String = "gpt-4o-mini-transcribe") {
+    func connect(apiKey: String, model: String = "gpt-4o-mini-transcribe", language: String = "") {
         guard case .disconnected = state else { return }
         state = .connecting
 
-        let urlString = "wss://api.openai.com/v1/realtime?intent=transcription&model=\(model)"
+        let urlString = "wss://api.openai.com/v1/realtime?intent=transcription"
         guard let url = URL(string: urlString) else {
             state = .failed(ClientError.connectionFailed("Invalid URL"))
             return
@@ -65,7 +65,7 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         task.resume()
 
         listenForMessages()
-        sendSessionUpdate(model: model)
+        sendSessionUpdate(model: model, language: language)
     }
 
     /// Send a chunk of PCM16 audio (base64-encoded).
@@ -104,14 +104,16 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
 
     // MARK: - Private
 
-    private func sendSessionUpdate(model: String) {
+    private func sendSessionUpdate(model: String, language: String) {
+        var transcriptionConfig: [String: Any] = ["model": model]
+        if !language.isEmpty {
+            transcriptionConfig["language"] = language
+        }
         let config: [String: Any] = [
-            "type": "session.update",
+            "type": "transcription_session.update",
             "session": [
                 "input_audio_format": "pcm16",
-                "input_audio_transcription": [
-                    "model": model
-                ],
+                "input_audio_transcription": transcriptionConfig,
                 "turn_detection": NSNull()
             ] as [String: Any]
         ]
@@ -168,7 +170,8 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
               let type = json["type"] as? String else { return }
 
         switch type {
-        case "session.created", "session.updated":
+        case "session.created", "session.updated",
+             "transcription_session.created", "transcription_session.updated":
             logInfo("RealtimeClient: Session \(type)")
             if case .connecting = state {
                 state = .ready

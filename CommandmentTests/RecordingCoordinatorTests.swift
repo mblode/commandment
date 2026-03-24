@@ -295,7 +295,7 @@ private final class MockRealtimeClient: RealtimeTranscribing {
     private(set) var commitCallCount = 0
     private(set) var disconnectCallCount = 0
 
-    func connect(apiKey: String, model: String) {
+    func connect(apiKey: String, model: String, language: String) {
         connectCallCount += 1
     }
 
