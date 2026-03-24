@@ -1,15 +1,18 @@
 import Foundation
 
+/// Protocol for testability — allows mocking the Realtime client in unit tests.
+protocol RealtimeTranscribing: AnyObject {
+    func connect(apiKey: String, model: String)
+    func sendAudioChunk(_ pcm16Data: Data)
+    func commitAndTranscribe(
+        onDelta: @escaping (String) -> Void,
+        completion: @escaping (Result<String, Error>) -> Void
+    )
+    func disconnect()
+}
+
 /// Streams audio to OpenAI's Realtime API via WebSocket during recording for near-instant transcription.
-///
-/// Protocol flow:
-/// 1. Connect to `wss://api.openai.com/v1/realtime?intent=transcription&model=<model>`
-/// 2. Send `session.update` with transcription config
-/// 3. Stream `input_audio_buffer.append` with base64 PCM16 chunks during recording
-/// 4. On stop: send `input_audio_buffer.commit`
-/// 5. Receive `conversation.item.input_audio_transcription.delta` partial events
-/// 6. Receive `conversation.item.input_audio_transcription.completed` final event
-final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate {
+final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, RealtimeTranscribing {
     enum State {
         case disconnected
         case connecting
@@ -36,7 +39,7 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate {
     private var webSocketTask: URLSessionWebSocketTask?
     private var urlSession: URLSession?
     private var onDelta: ((String) -> Void)?
-    private var onComplete: ((Result<String, ClientError>) -> Void)?
+    private var onComplete: ((Result<String, Error>) -> Void)?
     private var accumulatedText = ""
     private let lock = NSLock()
 
@@ -78,7 +81,7 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate {
     /// Commit the audio buffer and await transcription result.
     func commitAndTranscribe(
         onDelta: @escaping (String) -> Void,
-        completion: @escaping (Result<String, ClientError>) -> Void
+        completion: @escaping (Result<String, Error>) -> Void
     ) {
         self.onDelta = onDelta
         self.onComplete = completion
@@ -192,7 +195,7 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate {
             let errorMsg = (json["error"] as? [String: Any])?["message"] as? String ?? "Unknown error"
             logError("RealtimeClient: Error event: \(errorMsg)")
             if case .transcribing = state {
-                finish(.failure(.transcriptionFailed(errorMsg)))
+                finish(.failure(ClientError.transcriptionFailed(errorMsg)))
             } else {
                 state = .failed(ClientError.connectionFailed(errorMsg))
             }
@@ -211,7 +214,7 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate {
         }
     }
 
-    private func finish(_ result: Result<String, ClientError>) {
+    private func finish(_ result: Result<String, Error>) {
         lock.lock()
         let completion = onComplete
         onComplete = nil
@@ -228,7 +231,7 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate {
         lock.unlock()
 
         state = .disconnected
-        completion?(.failure(.connectionFailed(error.localizedDescription)))
+        completion?(.failure(ClientError.connectionFailed(error.localizedDescription)))
     }
 
     // MARK: - URLSessionWebSocketDelegate

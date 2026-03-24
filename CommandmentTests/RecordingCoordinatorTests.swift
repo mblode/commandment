@@ -13,12 +13,13 @@ final class RecordingCoordinatorTests: XCTestCase {
         super.tearDown()
     }
 
-    func test_hotkeyDownAndUp_streamingFlow_pastesTranscript() async throws {
+    func test_hotkeyDownAndUp_realtimeFlow_pastesTranscript() async throws {
         let notifications = NotificationCenter()
         let overlay = OverlaySpy()
         let audio = MockAudioManager()
         let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
-        transcription.streamingResult = .success("hello from streaming")
+        let mockClient = MockRealtimeClient()
+        mockClient.transcriptionResult = .success("hello from realtime")
 
         audio.nextStopURL = try makeAudioFile(byteCount: 9_000, pathExtension: "wav")
 
@@ -27,7 +28,7 @@ final class RecordingCoordinatorTests: XCTestCase {
 
         let pasteExpectation = expectation(description: "transcript pasted")
         transcription.onPaste = { text in
-            if text == "hello from streaming" {
+            if text == "hello from realtime" {
                 pasteExpectation.fulfill()
             }
         }
@@ -37,7 +38,8 @@ final class RecordingCoordinatorTests: XCTestCase {
             transcriptionManager: transcription,
             notificationCenter: notifications,
             overlay: overlay,
-            minimumRecordingDuration: 0
+            minimumRecordingDuration: 0,
+            makeRealtimeClient: { mockClient }
         )
         withExtendedLifetime(coordinator) {
             notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
@@ -48,8 +50,8 @@ final class RecordingCoordinatorTests: XCTestCase {
         notifications.post(name: NSNotification.Name("HotkeyKeyUp"), object: nil)
         await fulfillment(of: [pasteExpectation], timeout: 1.0)
 
-        XCTAssertEqual(transcription.streamingCallCount, 1)
-        XCTAssertEqual(transcription.pastedTexts, ["hello from streaming"])
+        XCTAssertEqual(mockClient.commitCallCount, 1)
+        XCTAssertEqual(transcription.pastedTexts, ["hello from realtime"])
         XCTAssertTrue(overlay.shownStates.contains(.recording))
         XCTAssertTrue(overlay.shownStates.contains(.processing))
         XCTAssertTrue(overlay.shownStates.contains(.success))
@@ -78,7 +80,8 @@ final class RecordingCoordinatorTests: XCTestCase {
             transcriptionManager: transcription,
             notificationCenter: notifications,
             overlay: overlay,
-            minimumRecordingDuration: 0.3
+            minimumRecordingDuration: 0.3,
+            makeRealtimeClient: { MockRealtimeClient() }
         )
         withExtendedLifetime(coordinator) {
             notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
@@ -90,7 +93,6 @@ final class RecordingCoordinatorTests: XCTestCase {
         await fulfillment(of: [tooShortExpectation], timeout: 1.5)
 
         XCTAssertEqual(audio.stopRecordingCallCount, 1)
-        XCTAssertEqual(transcription.streamingCallCount, 0)
         XCTAssertTrue(overlay.shownStates.contains(.tooShort))
     }
 
@@ -117,7 +119,8 @@ final class RecordingCoordinatorTests: XCTestCase {
             transcriptionManager: transcription,
             notificationCenter: notifications,
             overlay: overlay,
-            minimumRecordingDuration: 0.3
+            minimumRecordingDuration: 0.3,
+            makeRealtimeClient: { MockRealtimeClient() }
         )
         withExtendedLifetime(coordinator) {
             notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
@@ -131,15 +134,15 @@ final class RecordingCoordinatorTests: XCTestCase {
         await fulfillment(of: [tooShortExpectation], timeout: 1.5)
 
         XCTAssertEqual(audio.stopRecordingCallCount, 1)
-        XCTAssertEqual(transcription.streamingCallCount, 0)
     }
 
-    func test_streamingFailure_showsError() async throws {
+    func test_realtimeFailure_showsError() async throws {
         let notifications = NotificationCenter()
         let overlay = OverlaySpy()
         let audio = MockAudioManager()
         let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
-        transcription.streamingResult = .failure(.timeout)
+        let mockClient = MockRealtimeClient()
+        mockClient.transcriptionResult = .failure(RealtimeTranscriptionClient.ClientError.transcriptionFailed("test error"))
 
         audio.nextStopURL = try makeAudioFile(byteCount: 9_000, pathExtension: "wav")
 
@@ -154,9 +157,10 @@ final class RecordingCoordinatorTests: XCTestCase {
             transcriptionManager: transcription,
             notificationCenter: notifications,
             overlay: overlay,
-            minimumRecordingDuration: 0
+            minimumRecordingDuration: 0,
+            makeRealtimeClient: { mockClient }
         )
-        coordinator.errorDialogPresenter = { _, _ in } // bypass NSAlert.runModal() on CI
+        coordinator.errorDialogPresenter = { _, _ in }
         withExtendedLifetime(coordinator) {
             notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
         }
@@ -166,44 +170,8 @@ final class RecordingCoordinatorTests: XCTestCase {
         notifications.post(name: NSNotification.Name("HotkeyKeyUp"), object: nil)
         await fulfillment(of: [dismissExpectation], timeout: 1.5)
 
-        XCTAssertEqual(transcription.streamingCallCount, 1)
+        XCTAssertEqual(mockClient.commitCallCount, 1)
         XCTAssertTrue(overlay.shownStates.contains(.processing))
-    }
-
-    func test_streamingDeltas_updateOverlay() async throws {
-        let notifications = NotificationCenter()
-        let overlay = OverlaySpy()
-        let audio = MockAudioManager()
-        let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
-        transcription.streamingDeltas = ["Hello", " world"]
-        transcription.streamingResult = .success("Hello world")
-
-        audio.nextStopURL = try makeAudioFile(byteCount: 9_000, pathExtension: "wav")
-
-        let startExpectation = expectation(description: "recording started")
-        audio.onStartRecording = { startExpectation.fulfill() }
-
-        let pasteExpectation = expectation(description: "transcript pasted")
-        transcription.onPaste = { _ in pasteExpectation.fulfill() }
-
-        let coordinator = RecordingCoordinator(
-            audioManager: audio,
-            transcriptionManager: transcription,
-            notificationCenter: notifications,
-            overlay: overlay,
-            minimumRecordingDuration: 0
-        )
-        withExtendedLifetime(coordinator) {
-            notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
-        }
-
-        await fulfillment(of: [startExpectation], timeout: 1.0)
-
-        notifications.post(name: NSNotification.Name("HotkeyKeyUp"), object: nil)
-        await fulfillment(of: [pasteExpectation], timeout: 1.0)
-
-        // Verify overlay showed success after streaming completed
-        XCTAssertTrue(overlay.shownStates.contains(.success))
     }
 
     func test_holdMode_keyUpBeforeStart_stopsAfterStartCompletes() async throws {
@@ -213,7 +181,8 @@ final class RecordingCoordinatorTests: XCTestCase {
         audio.setRecordingBeforeCompletion = false
         audio.startCompletionDelay = 0.05
         let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
-        transcription.streamingResult = .success("race condition fixed")
+        let mockClient = MockRealtimeClient()
+        mockClient.transcriptionResult = .success("race condition fixed")
 
         audio.nextStopURL = try makeAudioFile(byteCount: 9_000, pathExtension: "wav")
 
@@ -225,7 +194,8 @@ final class RecordingCoordinatorTests: XCTestCase {
             transcriptionManager: transcription,
             notificationCenter: notifications,
             overlay: overlay,
-            minimumRecordingDuration: 0
+            minimumRecordingDuration: 0,
+            makeRealtimeClient: { mockClient }
         )
         withExtendedLifetime(coordinator) {
             notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
@@ -235,7 +205,7 @@ final class RecordingCoordinatorTests: XCTestCase {
         await fulfillment(of: [pasteExpectation], timeout: 2.0)
 
         XCTAssertEqual(audio.stopRecordingCallCount, 1)
-        XCTAssertEqual(transcription.streamingCallCount, 1)
+        XCTAssertEqual(mockClient.commitCallCount, 1)
     }
 
     private func makeAudioFile(byteCount: Int, pathExtension: String) throws -> URL {
@@ -248,6 +218,8 @@ final class RecordingCoordinatorTests: XCTestCase {
         return url
     }
 }
+
+// MARK: - Mocks
 
 private final class MockAudioManager: RecordingAudioManaging {
     var isRecording = false
@@ -292,26 +264,14 @@ private final class MockAudioManager: RecordingAudioManaging {
         isRecording = false
         return nextStopURL
     }
-
-    func stopRecordingWithData() -> (url: URL, audioData: Data)? {
-        guard let url = stopRecording() else { return nil }
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return (url, data)
-    }
-
-    func convertToM4A(wavURL: URL) async -> URL? { nil }
 }
 
 private final class MockTranscriptionManager: RecordingTranscriptionManaging {
     var selectedModel: TranscriptionModel
     var selectedLanguage: TranscriptionLanguage = .en
-    var useRealtimeAPI: Bool = false
     var apiKey: String?
-    var streamingResult: Result<String, TranscriptionError> = .success("")
-    var streamingDeltas: [String] = []
     var onPaste: ((String) -> Void)?
 
-    private(set) var streamingCallCount = 0
     private(set) var pastedTexts: [String] = []
 
     init(model: TranscriptionModel, apiKey: String?) {
@@ -323,36 +283,34 @@ private final class MockTranscriptionManager: RecordingTranscriptionManaging {
         apiKey
     }
 
-    func prewarmConnection() {}
-
-    func transcribeStreaming(
-        audioURL: URL,
-        onDelta: @escaping (String) -> Void,
-        completion: @escaping (Result<String, TranscriptionError>) -> Void
-    ) {
-        streamingCallCount += 1
-        for delta in streamingDeltas {
-            onDelta(delta)
-        }
-        completion(streamingResult)
-    }
-
-    func transcribeStreaming(
-        audioData: Data,
-        isM4A: Bool,
-        onDelta: @escaping (String) -> Void,
-        completion: @escaping (Result<String, TranscriptionError>) -> Void
-    ) {
-        streamingCallCount += 1
-        for delta in streamingDeltas {
-            onDelta(delta)
-        }
-        completion(streamingResult)
-    }
-
     func pasteText(_ text: String) {
         pastedTexts.append(text)
         onPaste?(text)
+    }
+}
+
+private final class MockRealtimeClient: RealtimeTranscribing {
+    var transcriptionResult: Result<String, Error> = .success("")
+    private(set) var connectCallCount = 0
+    private(set) var commitCallCount = 0
+    private(set) var disconnectCallCount = 0
+
+    func connect(apiKey: String, model: String) {
+        connectCallCount += 1
+    }
+
+    func sendAudioChunk(_ pcm16Data: Data) {}
+
+    func commitAndTranscribe(
+        onDelta: @escaping (String) -> Void,
+        completion: @escaping (Result<String, Error>) -> Void
+    ) {
+        commitCallCount += 1
+        completion(transcriptionResult)
+    }
+
+    func disconnect() {
+        disconnectCallCount += 1
     }
 }
 

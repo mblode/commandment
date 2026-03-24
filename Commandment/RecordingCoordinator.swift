@@ -8,6 +8,7 @@ class RecordingCoordinator: ObservableObject {
     private let notificationCenter: NotificationCenter
     private let overlay: OverlayPresenting
     private let minimumRecordingDuration: TimeInterval
+    private let makeRealtimeClient: () -> RealtimeTranscribing
     private var cancellables = Set<AnyCancellable>()
     private var recordingStartTime: Date?
     private var delayedStopWork: DispatchWorkItem?
@@ -15,15 +16,16 @@ class RecordingCoordinator: ObservableObject {
     private let settingsPromptCooldown: TimeInterval = 5
     private var isStartingRecording = false
     private var stopRequestedBeforeStart = false
-    private var realtimeClient: RealtimeTranscriptionClient?
-    var errorDialogPresenter: ((URL, TranscriptionError) -> Void)?
+    private var realtimeClient: RealtimeTranscribing?
+    var errorDialogPresenter: ((URL, Error) -> Void)?
 
     init(
         audioManager: RecordingAudioManaging,
         transcriptionManager: RecordingTranscriptionManaging,
         notificationCenter: NotificationCenter = .default,
         overlay: OverlayPresenting? = nil,
-        minimumRecordingDuration: TimeInterval = 0.3
+        minimumRecordingDuration: TimeInterval = 0.3,
+        makeRealtimeClient: @escaping () -> RealtimeTranscribing = { RealtimeTranscriptionClient() }
     ) {
         logInfo("RecordingCoordinator: Initializing")
         self.audioManager = audioManager
@@ -31,6 +33,7 @@ class RecordingCoordinator: ObservableObject {
         self.notificationCenter = notificationCenter
         self.overlay = overlay ?? LiveOverlayPresenter.shared
         self.minimumRecordingDuration = minimumRecordingDuration
+        self.makeRealtimeClient = makeRealtimeClient
 
         notificationCenter.publisher(for: NSNotification.Name("HotkeyKeyDown"))
             .receive(on: DispatchQueue.main)
@@ -61,7 +64,7 @@ class RecordingCoordinator: ObservableObject {
             return
         }
 
-        guard transcriptionManager.getAPIKey() != nil else {
+        guard let apiKey = transcriptionManager.getAPIKey() else {
             handleMissingAPIKeyGuidance()
             return
         }
@@ -71,17 +74,12 @@ class RecordingCoordinator: ObservableObject {
         stopRequestedBeforeStart = false
         isStartingRecording = true
 
-        // Set up connection before recording starts
-        if transcriptionManager.useRealtimeAPI, let apiKey = transcriptionManager.getAPIKey() {
-            let client = RealtimeTranscriptionClient()
-            client.connect(apiKey: apiKey, model: transcriptionManager.selectedModel.modelID)
-            self.realtimeClient = client
-            audioManager.audioChunkHandler = { [weak client] pcm16Data in
-                client?.sendAudioChunk(pcm16Data)
-            }
-        } else {
-            // Pre-warm TCP+TLS connection so it's ready when recording stops
-            transcriptionManager.prewarmConnection()
+        // Connect Realtime API WebSocket before recording starts
+        let client = makeRealtimeClient()
+        client.connect(apiKey: apiKey, model: transcriptionManager.selectedModel.modelID)
+        self.realtimeClient = client
+        audioManager.audioChunkHandler = { [weak client] pcm16Data in
+            client?.sendAudioChunk(pcm16Data)
         }
 
         audioManager.startRecording { [weak self] (didStart: Bool) in
@@ -96,6 +94,9 @@ class RecordingCoordinator: ObservableObject {
                 }
             } else {
                 self.stopRequestedBeforeStart = false
+                self.realtimeClient?.disconnect()
+                self.realtimeClient = nil
+                self.audioManager.audioChunkHandler = nil
                 self.overlay.dismiss()
                 if self.audioManager.isMicrophonePermissionDenied {
                     logInfo("RecordingCoordinator: Recording start blocked by missing microphone permission")
@@ -151,83 +152,40 @@ class RecordingCoordinator: ObservableObject {
 
         overlay.show(state: .processing)
 
-        guard let result = audioManager.stopRecordingWithData() else {
+        guard let recordingURL = audioManager.stopRecording() else {
             overlay.dismiss()
+            realtimeClient?.disconnect()
+            realtimeClient = nil
+            audioManager.audioChunkHandler = nil
             logError("RecordingCoordinator: Failed to stop recording - no file returned")
             return
         }
 
-        let recordingURL = result.url
-        let audioData = result.audioData
+        audioManager.audioChunkHandler = nil
+
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: recordingURL.path)[.size] as? Int64) ?? 0
 
         // Minimum ~125ms of 24kHz mono float32 audio
-        let minimumFileSize = 6000
-        guard audioData.count >= minimumFileSize else {
-            logInfo("RecordingCoordinator: Recording too short (\(audioData.count) bytes)")
+        let minimumFileSize: Int64 = 6000
+        guard fileSize >= minimumFileSize else {
+            logInfo("RecordingCoordinator: Recording too short (\(fileSize) bytes)")
+            realtimeClient?.disconnect()
+            realtimeClient = nil
             overlay.show(state: .tooShort)
             return
         }
 
-        logInfo("RecordingCoordinator: Recording data size: \(audioData.count) bytes")
+        logInfo("RecordingCoordinator: Recording file size: \(fileSize) bytes")
 
-        // Realtime API path: audio was already streamed during recording
-        if let client = realtimeClient {
-            audioManager.audioChunkHandler = nil
-            realtimeClient = nil
-            client.commitAndTranscribe(
-                onDelta: { _ in },
-                completion: { [weak self] result in
-                    DispatchQueue.main.async {
-                        guard let self = self else { return }
-                        switch result {
-                        case .success(let text):
-                            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                logInfo("RecordingCoordinator: Empty transcript (Realtime)")
-                                self.overlay.show(state: .tooShort)
-                            } else {
-                                logInfo("RecordingCoordinator: Transcript (Realtime, \(text.count) chars): \(text.prefix(50))...")
-                                self.overlay.show(state: .success)
-                                self.transcriptionManager.pasteText(text)
-                            }
-                        case .failure(let error):
-                            logError("RecordingCoordinator: Realtime transcription failed: \(error.description), falling back to REST")
-                            // Fall back to REST streaming
-                            self.sendTranscription(audioData: audioData, isM4A: false, recordingURL: recordingURL)
-                        }
-                        client.disconnect()
-                    }
-                }
-            )
+        guard let client = realtimeClient else {
+            logError("RecordingCoordinator: No Realtime client available")
+            overlay.dismiss()
             return
         }
+        realtimeClient = nil
 
-        // REST path: compress and upload
-        let compressionThreshold = 192_000
-        if audioData.count > compressionThreshold {
-            Task {
-                if let m4aURL = await audioManager.convertToM4A(wavURL: recordingURL),
-                   let m4aData = try? Data(contentsOf: m4aURL) {
-                    self.sendTranscription(audioData: m4aData, isM4A: true, recordingURL: recordingURL)
-                } else {
-                    logInfo("RecordingCoordinator: M4A compression failed, using WAV")
-                    self.sendTranscription(audioData: audioData, isM4A: false, recordingURL: recordingURL)
-                }
-            }
-            return
-        }
-
-        sendTranscription(audioData: audioData, isM4A: false, recordingURL: recordingURL)
-    }
-
-    private func sendTranscription(audioData: Data, isM4A: Bool, recordingURL: URL) {
-        // Use streaming REST transcription — sends in-memory audio, receives SSE deltas
-        var accumulatedTranscript = ""
-        transcriptionManager.transcribeStreaming(
-            audioData: audioData,
-            isM4A: isM4A,
-            onDelta: { delta in
-                accumulatedTranscript += delta
-            },
+        client.commitAndTranscribe(
+            onDelta: { _ in },
             completion: { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
@@ -241,16 +199,12 @@ class RecordingCoordinator: ObservableObject {
                             self.overlay.show(state: .success)
                             self.transcriptionManager.pasteText(text)
                         }
-
                     case .failure(let error):
                         self.overlay.dismiss()
-                        if case .noAPIKey = error {
-                            self.handleMissingAPIKeyGuidance()
-                        } else {
-                            logError("RecordingCoordinator: Transcription failed: \(error.description)")
-                            self.showTranscriptionErrorWithOptions(recordingURL: recordingURL, error: error)
-                        }
+                        logError("RecordingCoordinator: Transcription failed: \(error.localizedDescription)")
+                        self.showTranscriptionError(recordingURL: recordingURL, error: error)
                     }
+                    client.disconnect()
                 }
             }
         )
@@ -280,24 +234,23 @@ class RecordingCoordinator: ObservableObject {
         alert.runModal()
     }
 
-    private func showTranscriptionErrorWithOptions(recordingURL: URL, error: TranscriptionError) {
+    private func showTranscriptionError(recordingURL: URL, error: Error) {
         if let errorDialogPresenter {
             errorDialogPresenter(recordingURL, error)
             return
         }
-        logInfo("Showing transcription error dialog with options")
+        logInfo("Showing transcription error dialog")
 
         let alert = NSAlert()
         alert.messageText = "Transcription Error"
         alert.informativeText = """
         Failed to transcribe audio.
 
-        Last error: \(error.description)
+        Error: \(error.localizedDescription)
 
         Open logs for full diagnostic details.
         """
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Retry")
         alert.addButton(withTitle: "Show in Finder")
         alert.addButton(withTitle: "Show Logs")
         alert.addButton(withTitle: "Cancel")
@@ -306,36 +259,10 @@ class RecordingCoordinator: ObservableObject {
 
         switch response {
         case .alertFirstButtonReturn:
-            logInfo("RecordingCoordinator: Retrying transcription")
-            var accumulatedTranscript = ""
-            transcriptionManager.transcribeStreaming(
-                audioURL: recordingURL,
-                onDelta: { [weak self] delta in
-                    accumulatedTranscript += delta
-                    DispatchQueue.main.async {
-                        self?.overlay.show(state: .transcribing(accumulatedTranscript))
-                    }
-                },
-                completion: { [weak self] result in
-                    DispatchQueue.main.async {
-                        guard let self = self else { return }
-                        switch result {
-                        case .success(let text):
-                            self.overlay.show(state: .success)
-                            self.transcriptionManager.pasteText(text)
-                        case .failure(let retryError):
-                            self.overlay.dismiss()
-                            logError("RecordingCoordinator: Retry failed: \(retryError.description)")
-                        }
-                    }
-                }
-            )
-
-        case .alertSecondButtonReturn:
             logInfo("RecordingCoordinator: Showing in Finder: \(recordingURL)")
             NSWorkspace.shared.selectFile(recordingURL.path, inFileViewerRootedAtPath: "")
 
-        case .alertThirdButtonReturn:
+        case .alertSecondButtonReturn:
             logInfo("RecordingCoordinator: Opening log file")
             Logger.shared.openLogFile()
 

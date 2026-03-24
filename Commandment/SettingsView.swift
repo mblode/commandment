@@ -54,12 +54,6 @@ struct SettingsView: View {
                 Text("Specifying a language improves accuracy and reduces latency.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-
-                Toggle("Low-latency mode", isOn: $transcriptionManager.useRealtimeAPI)
-
-                Text("Streams audio to OpenAI during recording for near-instant results. Uses the Realtime API which may cost more per minute.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section("General") {
