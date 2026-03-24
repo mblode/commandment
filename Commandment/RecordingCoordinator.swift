@@ -15,6 +15,7 @@ class RecordingCoordinator: ObservableObject {
     private let settingsPromptCooldown: TimeInterval = 5
     private var isStartingRecording = false
     private var stopRequestedBeforeStart = false
+    private var realtimeClient: RealtimeTranscriptionClient?
     var errorDialogPresenter: ((URL, TranscriptionError) -> Void)?
 
     init(
@@ -69,6 +70,19 @@ class RecordingCoordinator: ObservableObject {
         delayedStopWork = nil
         stopRequestedBeforeStart = false
         isStartingRecording = true
+
+        // Set up connection before recording starts
+        if transcriptionManager.useRealtimeAPI, let apiKey = transcriptionManager.getAPIKey() {
+            let client = RealtimeTranscriptionClient()
+            client.connect(apiKey: apiKey, model: transcriptionManager.selectedModel.modelID)
+            self.realtimeClient = client
+            audioManager.audioChunkHandler = { [weak client] pcm16Data in
+                client?.sendAudioChunk(pcm16Data)
+            }
+        } else {
+            // Pre-warm TCP+TLS connection so it's ready when recording stops
+            transcriptionManager.prewarmConnection()
+        }
 
         audioManager.startRecording { [weak self] (didStart: Bool) in
             guard let self else { return }
@@ -137,28 +151,80 @@ class RecordingCoordinator: ObservableObject {
 
         overlay.show(state: .processing)
 
-        guard let recordingURL = audioManager.stopRecording() else {
+        guard let result = audioManager.stopRecordingWithData() else {
             overlay.dismiss()
             logError("RecordingCoordinator: Failed to stop recording - no file returned")
             return
         }
 
-        let fileSize = (try? FileManager.default.attributesOfItem(atPath: recordingURL.path)[.size] as? Int64) ?? 0
+        let recordingURL = result.url
+        let audioData = result.audioData
 
         // Minimum ~125ms of 24kHz mono float32 audio
-        let minimumFileSize: Int64 = 6000
-        guard fileSize >= minimumFileSize else {
-            logInfo("RecordingCoordinator: Recording too short (\(fileSize) bytes)")
+        let minimumFileSize = 6000
+        guard audioData.count >= minimumFileSize else {
+            logInfo("RecordingCoordinator: Recording too short (\(audioData.count) bytes)")
             overlay.show(state: .tooShort)
             return
         }
 
-        logInfo("RecordingCoordinator: Recording file size: \(fileSize) bytes")
+        logInfo("RecordingCoordinator: Recording data size: \(audioData.count) bytes")
 
-        // Use streaming REST transcription — sends complete audio, receives SSE deltas
+        // Realtime API path: audio was already streamed during recording
+        if let client = realtimeClient {
+            audioManager.audioChunkHandler = nil
+            realtimeClient = nil
+            client.commitAndTranscribe(
+                onDelta: { _ in },
+                completion: { [weak self] result in
+                    DispatchQueue.main.async {
+                        guard let self = self else { return }
+                        switch result {
+                        case .success(let text):
+                            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                logInfo("RecordingCoordinator: Empty transcript (Realtime)")
+                                self.overlay.show(state: .tooShort)
+                            } else {
+                                logInfo("RecordingCoordinator: Transcript (Realtime, \(text.count) chars): \(text.prefix(50))...")
+                                self.overlay.show(state: .success)
+                                self.transcriptionManager.pasteText(text)
+                            }
+                        case .failure(let error):
+                            logError("RecordingCoordinator: Realtime transcription failed: \(error.description), falling back to REST")
+                            // Fall back to REST streaming
+                            self.sendTranscription(audioData: audioData, isM4A: false, recordingURL: recordingURL)
+                        }
+                        client.disconnect()
+                    }
+                }
+            )
+            return
+        }
+
+        // REST path: compress and upload
+        let compressionThreshold = 192_000
+        if audioData.count > compressionThreshold {
+            Task {
+                if let m4aURL = await audioManager.convertToM4A(wavURL: recordingURL),
+                   let m4aData = try? Data(contentsOf: m4aURL) {
+                    self.sendTranscription(audioData: m4aData, isM4A: true, recordingURL: recordingURL)
+                } else {
+                    logInfo("RecordingCoordinator: M4A compression failed, using WAV")
+                    self.sendTranscription(audioData: audioData, isM4A: false, recordingURL: recordingURL)
+                }
+            }
+            return
+        }
+
+        sendTranscription(audioData: audioData, isM4A: false, recordingURL: recordingURL)
+    }
+
+    private func sendTranscription(audioData: Data, isM4A: Bool, recordingURL: URL) {
+        // Use streaming REST transcription — sends in-memory audio, receives SSE deltas
         var accumulatedTranscript = ""
         transcriptionManager.transcribeStreaming(
-            audioURL: recordingURL,
+            audioData: audioData,
+            isM4A: isM4A,
             onDelta: { delta in
                 accumulatedTranscript += delta
             },

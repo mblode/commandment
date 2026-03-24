@@ -251,6 +251,7 @@ final class RecordingCoordinatorTests: XCTestCase {
 
 private final class MockAudioManager: RecordingAudioManaging {
     var isRecording = false
+    var audioChunkHandler: ((Data) -> Void)?
 
     var onStartRecording: (() -> Void)?
     var nextStopURL: URL?
@@ -291,11 +292,20 @@ private final class MockAudioManager: RecordingAudioManaging {
         isRecording = false
         return nextStopURL
     }
+
+    func stopRecordingWithData() -> (url: URL, audioData: Data)? {
+        guard let url = stopRecording() else { return nil }
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return (url, data)
+    }
+
+    func convertToM4A(wavURL: URL) async -> URL? { nil }
 }
 
 private final class MockTranscriptionManager: RecordingTranscriptionManaging {
     var selectedModel: TranscriptionModel
     var selectedLanguage: TranscriptionLanguage = .en
+    var useRealtimeAPI: Bool = false
     var apiKey: String?
     var streamingResult: Result<String, TranscriptionError> = .success("")
     var streamingDeltas: [String] = []
@@ -313,8 +323,23 @@ private final class MockTranscriptionManager: RecordingTranscriptionManaging {
         apiKey
     }
 
+    func prewarmConnection() {}
+
     func transcribeStreaming(
         audioURL: URL,
+        onDelta: @escaping (String) -> Void,
+        completion: @escaping (Result<String, TranscriptionError>) -> Void
+    ) {
+        streamingCallCount += 1
+        for delta in streamingDeltas {
+            onDelta(delta)
+        }
+        completion(streamingResult)
+    }
+
+    func transcribeStreaming(
+        audioData: Data,
+        isM4A: Bool,
         onDelta: @escaping (String) -> Void,
         completion: @escaping (Result<String, TranscriptionError>) -> Void
     ) {

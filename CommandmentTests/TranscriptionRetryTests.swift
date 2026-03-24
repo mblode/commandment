@@ -20,8 +20,10 @@ final class TranscriptionRetryTests: XCTestCase {
         let manager = TranscriptionManager()
         let expectation = expectation(description: "completion")
 
+        // Use audioData overload to bypass file I/O and test API key check directly
         manager.transcribeStreaming(
-            audioURL: URL(fileURLWithPath: "/tmp/does-not-matter.wav"),
+            audioData: Data([0x00]),
+            isM4A: false,
             onDelta: { _ in XCTFail("Expected no deltas when API key is missing") },
             completion: { result in
                 guard case .failure(let error) = result, case .noAPIKey = error else {

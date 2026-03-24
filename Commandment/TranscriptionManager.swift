@@ -125,11 +125,14 @@ class TranscriptionManager: ObservableObject {
     @Published var setupGuideDismissed: Bool = UserDefaults.standard.bool(forKey: "setupGuideDismissed") {
         didSet { UserDefaults.standard.set(setupGuideDismissed, forKey: "setupGuideDismissed") }
     }
+    @Published var useRealtimeAPI: Bool = UserDefaults.standard.bool(forKey: "useRealtimeAPI") {
+        didSet { UserDefaults.standard.set(useRealtimeAPI, forKey: "useRealtimeAPI") }
+    }
     private var apiKey: String?
 
     private let requestTimeout: TimeInterval = 15.0
 
-    // Persistent session for connection reuse (TLS session resumption, HTTP/2 multiplexing)
+    // Persistent session for non-streaming requests (completion-handler API)
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = requestTimeout
@@ -138,9 +141,28 @@ class TranscriptionManager: ObservableObject {
         return URLSession(configuration: config)
     }()
 
+    // Persistent session for SSE streaming (delegate-based, reuses TCP+TLS connections)
+    private let sseRouter = SSESessionRouter()
+    private lazy var streamingSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = requestTimeout
+        config.timeoutIntervalForResource = requestTimeout * 2
+        config.waitsForConnectivity = true
+        return URLSession(configuration: config, delegate: sseRouter, delegateQueue: nil)
+    }()
+
     init() {
         loadAPIKey()
         recheckAccessibilityPermission()
+    }
+
+    /// Pre-establish TCP+TLS connection to OpenAI so subsequent requests skip the handshake.
+    func prewarmConnection() {
+        guard let url = URL(string: "https://api.openai.com") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 5
+        streamingSession.dataTask(with: request).resume()
     }
 
     // MARK: - API Key (Keychain)
@@ -273,10 +295,29 @@ class TranscriptionManager: ObservableObject {
         onDelta: @escaping (String) -> Void,
         completion: @escaping (Result<String, TranscriptionError>) -> Void
     ) {
+        let audioData: Data
+        do {
+            audioData = try Data(contentsOf: audioURL)
+        } catch {
+            logError("Error reading audio file: \(error)")
+            completion(.failure(.fileError(error.localizedDescription)))
+            return
+        }
+        let isM4A = audioURL.pathExtension.lowercased() == "m4a"
+        transcribeStreaming(audioData: audioData, isM4A: isM4A, onDelta: onDelta, completion: completion)
+    }
+
+    func transcribeStreaming(
+        audioData: Data,
+        isM4A: Bool = false,
+        onDelta: @escaping (String) -> Void,
+        completion: @escaping (Result<String, TranscriptionError>) -> Void
+    ) {
         updateStatus("Starting transcription...")
         logInfo("Streaming transcription attempt 1 of 1")
 
-        performStreamingRequest(audioURL: audioURL, onDelta: onDelta) { result in
+        performStreamingRequest(audioData: audioData, isM4A: isM4A, onDelta: onDelta) { [weak self] result in
+            guard let self else { return }
             switch result {
             case .success(let text):
                 self.updateStatus("")
@@ -300,13 +341,16 @@ class TranscriptionManager: ObservableObject {
 
                 self.updateStatus("")
                 logInfo("Falling back to non-streaming transcription")
-                self.transcribeWithRetry(audioURL: audioURL, completion: completion)
+                // Non-streaming fallback still reads from disk (rare path)
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("commandment-recording.wav")
+                self.transcribeWithRetry(audioURL: tempURL, completion: completion)
             }
         }
     }
 
     private func performStreamingRequest(
-        audioURL: URL,
+        audioData: Data,
+        isM4A: Bool,
         onDelta: @escaping (String) -> Void,
         completion: @escaping (Result<String, TranscriptionError>) -> Void
     ) {
@@ -316,17 +360,7 @@ class TranscriptionManager: ObservableObject {
         }
 
         DispatchQueue.main.async { self.isTranscribing = true }
-
-        let audioData: Data
-        do {
-            audioData = try Data(contentsOf: audioURL)
-            logInfo("Streaming transcription: audio file \(audioData.count) bytes")
-        } catch {
-            logError("Error reading audio file: \(error)")
-            DispatchQueue.main.async { self.isTranscribing = false }
-            completion(.failure(.fileError(error.localizedDescription)))
-            return
-        }
+        logInfo("Streaming transcription: audio data \(audioData.count) bytes")
 
         let url = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
         var request = URLRequest(url: url)
@@ -337,7 +371,6 @@ class TranscriptionManager: ObservableObject {
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-        let isM4A = audioURL.pathExtension.lowercased() == "m4a"
         request.httpBody = TranscriptionManager.buildMultipartBody(
             audioData: audioData,
             boundary: boundary,
@@ -355,8 +388,8 @@ class TranscriptionManager: ObservableObject {
             }
         )
 
-        let streamSession = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-        let task = streamSession.dataTask(with: request)
+        let task = streamingSession.dataTask(with: request)
+        sseRouter.register(delegate, for: task.taskIdentifier)
         task.resume()
     }
 
@@ -669,8 +702,6 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard !hasCompleted else { return }
 
-        session.invalidateAndCancel()
-
         if let error = error {
             let nsError = error as NSError
             if nsError.domain == NSURLErrorDomain &&
@@ -800,5 +831,51 @@ final class SSEDataDelegate: NSObject, URLSessionDataDelegate {
         guard !hasCompleted else { return }
         hasCompleted = true
         onComplete(result)
+    }
+}
+
+// MARK: - SSE Session Router
+
+/// Routes URLSessionDataDelegate callbacks from a shared persistent session to per-request SSEDataDelegate instances.
+final class SSESessionRouter: NSObject, URLSessionDataDelegate {
+    private var delegates = [Int: SSEDataDelegate]()
+    private let lock = NSLock()
+
+    func register(_ delegate: SSEDataDelegate, for taskIdentifier: Int) {
+        lock.lock()
+        delegates[taskIdentifier] = delegate
+        lock.unlock()
+    }
+
+    private func delegate(for taskIdentifier: Int) -> SSEDataDelegate? {
+        lock.lock()
+        let d = delegates[taskIdentifier]
+        lock.unlock()
+        return d
+    }
+
+    private func removeDelegate(for taskIdentifier: Int) {
+        lock.lock()
+        delegates.removeValue(forKey: taskIdentifier)
+        lock.unlock()
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        if let d = delegate(for: dataTask.taskIdentifier) {
+            d.urlSession(session, dataTask: dataTask, didReceive: response, completionHandler: completionHandler)
+        } else {
+            completionHandler(.allow)
+        }
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        delegate(for: dataTask.taskIdentifier)?.urlSession(session, dataTask: dataTask, didReceive: data)
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let d = delegate(for: task.taskIdentifier) {
+            d.urlSession(session, task: task, didCompleteWithError: error)
+            removeDelegate(for: task.taskIdentifier)
+        }
     }
 }

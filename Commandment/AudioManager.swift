@@ -28,6 +28,17 @@ enum MicrophonePermissionState: String {
     }
 }
 
+private extension Data {
+    mutating func append(littleEndian value: UInt32) {
+        var v = value.littleEndian
+        append(Data(bytes: &v, count: 4))
+    }
+    mutating func append(littleEndian value: UInt16) {
+        var v = value.littleEndian
+        append(Data(bytes: &v, count: 2))
+    }
+}
+
 class AudioManager: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published private(set) var microphonePermissionState: MicrophonePermissionState = .notDetermined
@@ -39,6 +50,12 @@ class AudioManager: NSObject, ObservableObject {
     private var volumeMeter: AVAudioMixerNode?
     private let audioQueue = DispatchQueue(label: "co.blode.commandment.audio")
     private var _isRecordingOnAudioQueue = false
+    private var pcmDataBuffer = Data()
+
+    /// When set, receives PCM16 audio chunks (~100ms each) during recording for real-time streaming.
+    var audioChunkHandler: ((Data) -> Void)?
+    private var pcm16ChunkBuffer = Data()
+    private let chunkSampleThreshold = 2400 // 100ms at 24kHz
 
     override init() {
         super.init()
@@ -207,6 +224,33 @@ class AudioManager: NSObject, ObservableObject {
                 } catch {
                     logError("AudioManager: Failed to write buffer: \(error)")
                 }
+
+                // Accumulate PCM data in memory to avoid re-reading from disk later
+                if let channelData = finalBuffer.floatChannelData?[0] {
+                    let count = Int(finalBuffer.frameLength)
+                    channelData.withMemoryRebound(to: UInt8.self, capacity: count * 4) { ptr in
+                        self.pcmDataBuffer.append(ptr, count: count * 4)
+                    }
+
+                    // Stream PCM16 chunks to the Realtime API handler if active
+                    if let handler = self.audioChunkHandler {
+                        // Batch-convert Float32 to PCM16
+                        let pcm16 = UnsafeMutableBufferPointer<Int16>.allocate(capacity: count)
+                        for i in 0..<count {
+                            let clamped = max(-1.0, min(1.0, channelData[i]))
+                            pcm16[i] = Int16(clamped * 32767.0)
+                        }
+                        self.pcm16ChunkBuffer.append(UnsafeBufferPointer(pcm16))
+                        pcm16.deallocate()
+
+                        // Dispatch when we have ~100ms of audio
+                        if self.pcm16ChunkBuffer.count >= self.chunkSampleThreshold * 2 {
+                            let chunk = self.pcm16ChunkBuffer
+                            self.pcm16ChunkBuffer = Data()
+                            handler(chunk)
+                        }
+                    }
+                }
             }
         }
     }
@@ -267,6 +311,8 @@ class AudioManager: NSObject, ObservableObject {
             
             try? FileManager.default.removeItem(at: self.recordingURL!)
             self.audioFile = nil
+            self.pcmDataBuffer = Data()
+            self.pcm16ChunkBuffer = Data()
             
             do {
                 self._isRecordingOnAudioQueue = true
@@ -299,6 +345,11 @@ class AudioManager: NSObject, ObservableObject {
         // Synchronously stop audio processing and release file resources
         audioQueue.sync { [weak self] in
             self?._isRecordingOnAudioQueue = false
+            // Flush remaining PCM16 chunk to handler
+            if let self = self, let handler = self.audioChunkHandler, !self.pcm16ChunkBuffer.isEmpty {
+                handler(self.pcm16ChunkBuffer)
+                self.pcm16ChunkBuffer = Data()
+            }
             logInfo("AudioManager: Stopping audio engine and cleaning up")
             self?.audioEngine?.stop()
             self?.volumeMeter?.removeTap(onBus: 0)
@@ -314,6 +365,42 @@ class AudioManager: NSObject, ObservableObject {
         }
         logError("AudioManager: Recording file not found at \(recordingURL)")
         return nil
+    }
+
+    /// Stops recording and returns the file URL along with in-memory WAV data (skipping disk re-read).
+    func stopRecordingWithData() -> (url: URL, audioData: Data)? {
+        guard let url = stopRecording() else { return nil }
+
+        // Build WAV header for the accumulated PCM data (24kHz, Float32, mono)
+        let audioData = buildWAVData(pcmData: pcmDataBuffer)
+        logInfo("AudioManager: In-memory WAV data \(audioData.count) bytes")
+        return (url, audioData)
+    }
+
+    private func buildWAVData(pcmData: Data) -> Data {
+        let sampleRate: UInt32 = 24000
+        let bitsPerSample: UInt16 = 32
+        let channels: UInt16 = 1
+        let byteRate = sampleRate * UInt32(channels) * UInt32(bitsPerSample / 8)
+        let blockAlign = channels * (bitsPerSample / 8)
+        let dataSize = UInt32(pcmData.count)
+
+        var header = Data(capacity: 44)
+        header.append(contentsOf: "RIFF".utf8)
+        header.append(littleEndian: 36 + dataSize)
+        header.append(contentsOf: "WAVE".utf8)
+        header.append(contentsOf: "fmt ".utf8)
+        header.append(littleEndian: UInt32(16))         // chunk size
+        header.append(littleEndian: UInt16(3))           // IEEE float
+        header.append(littleEndian: channels)
+        header.append(littleEndian: sampleRate)
+        header.append(littleEndian: byteRate)
+        header.append(littleEndian: blockAlign)
+        header.append(littleEndian: bitsPerSample)
+        header.append(contentsOf: "data".utf8)
+        header.append(littleEndian: dataSize)
+        header.append(pcmData)
+        return header
     }
 
     // MARK: - M4A Compression
