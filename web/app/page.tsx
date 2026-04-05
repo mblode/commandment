@@ -46,7 +46,7 @@ export default async function Page() {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#1c1c1e] font-sans">
       {/* Main content — left-aligned with clamped left padding */}
-      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-start justify-center px-6 pt-16 text-left md:pt-0">
+      <main className="relative z-10 mx-auto flex flex-1 flex-col items-start justify-center px-6 pt-16 text-left md:pt-0">
         {/* App icon */}
         <div>
           <Image
