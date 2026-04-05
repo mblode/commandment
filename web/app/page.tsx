@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { SiteFooter } from "@/components/site-footer";
+
 interface GitHubAsset {
   name: string;
   size: number;
@@ -42,9 +44,9 @@ export default async function Page() {
   const { downloadUrl, fileSizeMB, version } = await getLatestRelease();
 
   return (
-    <div className="relative flex min-h-dvh items-center overflow-hidden bg-[#1c1c1e]">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[#1c1c1e] font-sans">
       {/* Main content — left-aligned with clamped left padding */}
-      <main className="relative z-10 flex flex-col items-start text-left pl-[clamp(40px,12vw,180px)] pr-10">
+      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-start justify-center px-6 pt-16 text-left md:pt-0">
         {/* App icon */}
         <div>
           <Image
@@ -105,16 +107,7 @@ export default async function Page() {
         </span>
       </main>
 
-      {/* Copyright */}
-      <p className="absolute bottom-7 left-[clamp(40px,12vw,180px)] text-[12px] text-[#48484a]">
-        © {new Date().getFullYear()} Matthew Blode ·{" "}
-        <a
-          href="https://github.com/mblode/commandment"
-          className="hover:text-[#636366] transition-colors"
-        >
-          GitHub
-        </a>
-      </p>
+      <SiteFooter />
     </div>
   );
 }

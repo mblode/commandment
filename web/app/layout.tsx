@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import localFont from "next/font/local";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Agentation } from "agentation";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const glide = localFont({
+  src: [
+    { path: "../public/glide-variable.woff2", style: "normal" },
+    { path: "../public/glide-variable-italic.woff2", style: "italic" },
+  ],
+  variable: "--font-glide",
+  weight: "400 900",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -35,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} antialiased`}>
+      <body className={`${glide.variable} antialiased`}>
         {children}
         {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
