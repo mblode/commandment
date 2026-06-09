@@ -8,7 +8,6 @@ enum KeychainManager {
     private enum KeychainOperation {
         case add
         case copy
-        case delete
     }
 
     private static func withDataProtectionKeychain(_ baseQuery: [String: Any]) -> [String: Any] {
@@ -25,7 +24,7 @@ enum KeychainManager {
         switch operation {
         case .add:
             return status == errSecNotAvailable || status == errSecInteractionNotAllowed
-        case .copy, .delete:
+        case .copy:
             return status == errSecItemNotFound || status == errSecNotAvailable || status == errSecInteractionNotAllowed
         }
     }
@@ -43,19 +42,20 @@ enum KeychainManager {
         return SecItemAdd(baseQuery as CFDictionary, nil)
     }
 
-    private static func deleteWithFallback(_ baseQuery: [String: Any]) -> OSStatus {
-        let dataProtectionQuery = withDataProtectionKeychain(baseQuery)
-        let dataProtectionStatus = SecItemDelete(dataProtectionQuery as CFDictionary)
-        guard dataProtectionStatus != errSecSuccess else {
-            return dataProtectionStatus
+    /// Best-effort removal of the item from BOTH the data-protection and legacy
+    /// keychains. A sandboxed app's reads and writes can resolve to different stores,
+    /// so a copy left in either one could shadow a freshly written value and make a
+    /// "saved" key silently revert on the next launch. Benign not-found / missing-
+    /// entitlement results are expected and ignored.
+    private static func purgeFromAllKeychains(_ baseQuery: [String: Any]) {
+        for query in [withDataProtectionKeychain(baseQuery), baseQuery] {
+            let status = SecItemDelete(query as CFDictionary)
+            if status != errSecSuccess,
+               status != errSecItemNotFound,
+               status != errSecMissingEntitlement {
+                logDebug("KeychainManager: purge delete returned \(status)")
+            }
         }
-        guard shouldFallbackToLegacy(for: dataProtectionStatus, operation: .delete) else {
-            return dataProtectionStatus
-        }
-        if dataProtectionStatus == errSecMissingEntitlement {
-            logInfo("KeychainManager: Falling back to legacy keychain for delete (missing entitlement)")
-        }
-        return SecItemDelete(baseQuery as CFDictionary)
     }
 
     private static func copyMatchingWithFallback(_ baseQuery: [String: Any], result: inout AnyObject?) -> OSStatus {
@@ -82,34 +82,36 @@ enum KeychainManager {
     static func saveAPIKey(_ key: String) -> Bool {
         guard let data = key.data(using: .utf8) else { return false }
 
-        // Delete existing item first
-        let deleteQuery: [String: Any] = [
+        let itemQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyAccount
         ]
-        let deleteStatus = deleteWithFallback(deleteQuery)
-        if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
-            logError("KeychainManager: Failed to clear existing API key before save (status: \(deleteStatus))")
-        }
 
-        // Add new item
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: apiKeyAccount,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
-        ]
+        // Clear any prior copy from both keychains so a stale value cannot shadow the new one.
+        purgeFromAllKeychains(itemQuery)
+
+        var addQuery = itemQuery
+        addQuery[kSecValueData as String] = data
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
 
         let status = addWithFallback(addQuery)
-        if status == errSecSuccess {
-            logInfo("KeychainManager: API key saved to keychain")
-            return true
-        } else {
+        guard status == errSecSuccess else {
             logError("KeychainManager: Failed to save API key (status: \(status))")
             return false
         }
+
+        // Verify the value is actually retrievable and matches. The add and the load use
+        // the same data-protection-then-legacy fallback, so a mismatch here means the
+        // write landed in a store the load can't reach — surface it as a failure instead
+        // of a false success that silently reverts on the next launch.
+        guard loadAPIKey() == key else {
+            logError("KeychainManager: API key save did not persist (readback mismatch)")
+            return false
+        }
+
+        logInfo("KeychainManager: API key saved to keychain")
+        return true
     }
 
     static func loadAPIKey() -> String? {
@@ -143,15 +145,14 @@ enum KeychainManager {
             kSecAttrService as String: service,
             kSecAttrAccount as String: apiKeyAccount
         ]
-        let status = deleteWithFallback(query)
-        if status == errSecSuccess {
-            logInfo("KeychainManager: API key deleted from keychain")
-            return true
-        } else if status == errSecItemNotFound {
-            return true
-        } else {
-            logError("KeychainManager: Failed to delete API key (status: \(status))")
+        purgeFromAllKeychains(query)
+
+        // Confirm it's gone from every store the load can reach.
+        guard loadAPIKey() == nil else {
+            logError("KeychainManager: API key still present after delete")
             return false
         }
+        logInfo("KeychainManager: API key deleted from keychain")
+        return true
     }
 }
