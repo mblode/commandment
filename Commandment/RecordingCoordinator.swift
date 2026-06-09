@@ -8,6 +8,7 @@ class RecordingCoordinator: ObservableObject {
     private let notificationCenter: NotificationCenter
     private let overlay: OverlayPresenting
     private let minimumRecordingDuration: TimeInterval
+    private let transcriptionTimeout: TimeInterval
     private let makeRealtimeClient: () -> RealtimeTranscribing
     private var cancellables = Set<AnyCancellable>()
     private var recordingStartTime: Date?
@@ -25,6 +26,7 @@ class RecordingCoordinator: ObservableObject {
         notificationCenter: NotificationCenter = .default,
         overlay: OverlayPresenting? = nil,
         minimumRecordingDuration: TimeInterval = 0.3,
+        transcriptionTimeout: TimeInterval = 20,
         makeRealtimeClient: @escaping () -> RealtimeTranscribing = { RealtimeTranscriptionClient() }
     ) {
         logInfo("RecordingCoordinator: Initializing")
@@ -33,6 +35,7 @@ class RecordingCoordinator: ObservableObject {
         self.notificationCenter = notificationCenter
         self.overlay = overlay ?? LiveOverlayPresenter.shared
         self.minimumRecordingDuration = minimumRecordingDuration
+        self.transcriptionTimeout = transcriptionTimeout
         self.makeRealtimeClient = makeRealtimeClient
 
         notificationCenter.publisher(for: NSNotification.Name("HotkeyKeyDown"))
@@ -184,11 +187,30 @@ class RecordingCoordinator: ObservableObject {
         }
         realtimeClient = nil
 
+        // Guard against a silently half-open socket that never calls back: ensure the
+        // overlay is always dismissed and the failure surfaced after a timeout.
+        var hasHandled = false
+        let watchdog = DispatchWorkItem { [weak self] in
+            guard let self, !hasHandled else { return }
+            hasHandled = true
+            self.overlay.dismiss()
+            logError("RecordingCoordinator: Transcription timed out")
+            client.disconnect()
+            self.showTranscriptionError(
+                recordingURL: recordingURL,
+                error: RealtimeTranscriptionClient.ClientError.connectionFailed("Timed out waiting for transcription")
+            )
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + transcriptionTimeout, execute: watchdog)
+
         client.commitAndTranscribe(
             onDelta: { _ in },
             completion: { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
+                    guard !hasHandled else { return }
+                    hasHandled = true
+                    watchdog.cancel()
                     switch result {
                     case .success(let text):
                         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

@@ -41,6 +41,10 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
     private var onDelta: ((String) -> Void)?
     private var onComplete: ((Result<String, Error>) -> Void)?
     private var accumulatedText = ""
+    /// A failure observed before `commitAndTranscribe` was called (e.g. auth error during
+    /// connect). Surfaced to the completion handler the moment transcription is requested
+    /// so the UI never hangs waiting on a dead socket.
+    private var pendingError: Error?
     private let lock = NSLock()
 
     /// Connect to the Realtime API.
@@ -48,7 +52,9 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         guard case .disconnected = state else { return }
         state = .connecting
 
-        let urlString = "wss://api.openai.com/v1/realtime?intent=transcription"
+        // GA Realtime API: the transcription intent is carried by `session.type` in the
+        // session.update event below, not a query param, and the beta header is removed.
+        let urlString = "wss://api.openai.com/v1/realtime"
         guard let url = URL(string: urlString) else {
             state = .failed(ClientError.connectionFailed("Invalid URL"))
             return
@@ -56,7 +62,6 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
 
         var request = URLRequest(url: url)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("realtime=v1", forHTTPHeaderField: "OpenAI-Beta")
 
         let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
         self.urlSession = session
@@ -83,6 +88,18 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         onDelta: @escaping (String) -> Void,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
+        // If the connection already failed (e.g. bad API key surfaced during connect),
+        // report it immediately instead of writing `commit` to a dead socket and hanging.
+        if let pendingError {
+            self.pendingError = nil
+            completion(.failure(pendingError))
+            return
+        }
+        if case .failed(let err) = state {
+            completion(.failure(err))
+            return
+        }
+
         self.onDelta = onDelta
         self.onComplete = completion
         self.accumulatedText = ""
@@ -100,6 +117,7 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         state = .disconnected
         onDelta = nil
         onComplete = nil
+        pendingError = nil
     }
 
     // MARK: - Private
@@ -109,12 +127,19 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         if !language.isEmpty {
             transcriptionConfig["language"] = language
         }
+        // GA Realtime API: unified `session.update` with `session.type = transcription`,
+        // audio nested under `audio.input`, and the format expressed as an object.
         let config: [String: Any] = [
-            "type": "transcription_session.update",
+            "type": "session.update",
             "session": [
-                "input_audio_format": "pcm16",
-                "input_audio_transcription": transcriptionConfig,
-                "turn_detection": NSNull()
+                "type": "transcription",
+                "audio": [
+                    "input": [
+                        "format": ["type": "audio/pcm", "rate": 24000] as [String: Any],
+                        "transcription": transcriptionConfig,
+                        "turn_detection": NSNull()  // manual commit; no server VAD
+                    ] as [String: Any]
+                ] as [String: Any]
             ] as [String: Any]
         ]
         sendJSON(config)
@@ -197,10 +222,19 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         case "error":
             let errorMsg = (json["error"] as? [String: Any])?["message"] as? String ?? "Unknown error"
             logError("RealtimeClient: Error event: \(errorMsg)")
+            let err: Error
             if case .transcribing = state {
-                finish(.failure(ClientError.transcriptionFailed(errorMsg)))
+                err = ClientError.transcriptionFailed(errorMsg)
             } else {
-                state = .failed(ClientError.connectionFailed(errorMsg))
+                err = ClientError.connectionFailed(errorMsg)
+            }
+            state = .failed(err)
+            if onComplete != nil {
+                finish(.failure(err))
+            } else {
+                // Error arrived before transcription was requested — stash it so the
+                // pending commitAndTranscribe call reports it instead of hanging.
+                pendingError = err
             }
 
         case "input_audio_buffer.speech_started":
@@ -234,7 +268,14 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         lock.unlock()
 
         state = .disconnected
-        completion?(.failure(ClientError.connectionFailed(error.localizedDescription)))
+        let wrapped = ClientError.connectionFailed(error.localizedDescription)
+        if let completion {
+            completion(.failure(wrapped))
+        } else {
+            // Socket dropped before transcription was requested — remember the failure
+            // (unless a more specific error event already did) for commitAndTranscribe.
+            pendingError = pendingError ?? wrapped
+        }
     }
 
     // MARK: - URLSessionWebSocketDelegate
