@@ -52,9 +52,11 @@ final class RealtimeTranscriptionClient: NSObject, URLSessionWebSocketDelegate, 
         guard case .disconnected = state else { return }
         state = .connecting
 
-        // GA Realtime API: the transcription intent is carried by `session.type` in the
-        // session.update event below, not a query param, and the beta header is removed.
-        let urlString = "wss://api.openai.com/v1/realtime"
+        // GA Realtime API: `?intent=transcription` routes the handshake to a
+        // transcription-only session (the GA selector, distinct from `?model=` for
+        // conversational sessions). The beta `OpenAI-Beta` header is gone; the session is
+        // configured via the GA `session.update` shape below.
+        let urlString = "wss://api.openai.com/v1/realtime?intent=transcription"
         guard let url = URL(string: urlString) else {
             state = .failed(ClientError.connectionFailed("Invalid URL"))
             return
