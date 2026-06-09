@@ -174,6 +174,47 @@ final class RecordingCoordinatorTests: XCTestCase {
         XCTAssertTrue(overlay.shownStates.contains(.processing))
     }
 
+    func test_transcriptionNeverCompletes_watchdogDismissesAndShowsError() async throws {
+        let notifications = NotificationCenter()
+        let overlay = OverlaySpy()
+        let audio = MockAudioManager()
+        let transcription = MockTranscriptionManager(model: .gpt4oMiniTranscribe, apiKey: "test-key")
+        let mockClient = MockRealtimeClient()
+        mockClient.neverCompletes = true
+
+        audio.nextStopURL = try makeAudioFile(byteCount: 9_000, pathExtension: "wav")
+
+        let startExpectation = expectation(description: "recording started")
+        audio.onStartRecording = { startExpectation.fulfill() }
+
+        let dismissExpectation = expectation(description: "overlay dismissed by watchdog")
+        overlay.onDismiss = { dismissExpectation.fulfill() }
+
+        let errorExpectation = expectation(description: "error presented by watchdog")
+
+        let coordinator = RecordingCoordinator(
+            audioManager: audio,
+            transcriptionManager: transcription,
+            notificationCenter: notifications,
+            overlay: overlay,
+            minimumRecordingDuration: 0,
+            transcriptionTimeout: 0.2,
+            makeRealtimeClient: { mockClient }
+        )
+        coordinator.errorDialogPresenter = { _, _ in errorExpectation.fulfill() }
+        withExtendedLifetime(coordinator) {
+            notifications.post(name: NSNotification.Name("HotkeyKeyDown"), object: nil)
+        }
+
+        await fulfillment(of: [startExpectation], timeout: 1.0)
+
+        notifications.post(name: NSNotification.Name("HotkeyKeyUp"), object: nil)
+        await fulfillment(of: [dismissExpectation, errorExpectation], timeout: 2.0)
+
+        XCTAssertEqual(mockClient.commitCallCount, 1)
+        XCTAssertTrue(overlay.shownStates.contains(.processing))
+    }
+
     func test_holdMode_keyUpBeforeStart_stopsAfterStartCompletes() async throws {
         let notifications = NotificationCenter()
         let overlay = OverlaySpy()
@@ -291,6 +332,9 @@ private final class MockTranscriptionManager: RecordingTranscriptionManaging {
 
 private final class MockRealtimeClient: RealtimeTranscribing {
     var transcriptionResult: Result<String, Error> = .success("")
+    /// When true, `commitAndTranscribe` never invokes its completion — simulates a
+    /// silently half-open socket so the coordinator's watchdog must recover.
+    var neverCompletes = false
     private(set) var connectCallCount = 0
     private(set) var commitCallCount = 0
     private(set) var disconnectCallCount = 0
@@ -306,6 +350,7 @@ private final class MockRealtimeClient: RealtimeTranscribing {
         completion: @escaping (Result<String, Error>) -> Void
     ) {
         commitCallCount += 1
+        if neverCompletes { return }
         completion(transcriptionResult)
     }
 
