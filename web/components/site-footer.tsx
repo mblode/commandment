@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { siteConfig } from "@/lib/config";
 
 export const SiteFooter = () => (
@@ -12,11 +10,12 @@ export const SiteFooter = () => (
         rel="noopener noreferrer"
         target="_blank"
       >
-        <Image
+        <img
           alt="Avatar of Matthew Blode"
           className="rounded-full"
           height={20}
-          src="/matthew-blode-profile.jpg"
+          loading="lazy"
+          src="https://matthewblode.com/avatar-sm.png"
           width={20}
         />
         Matthew Blode
