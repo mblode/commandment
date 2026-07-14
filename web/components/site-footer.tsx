@@ -15,7 +15,7 @@ export const SiteFooter = () => (
           className="rounded-full"
           height={20}
           loading="lazy"
-          src="https://matthewblode.com/avatar-sm.png"
+          src="/avatar-sm.png"
           width={20}
         />
         Matthew Blode
