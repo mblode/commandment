@@ -50,7 +50,7 @@ export default async function Page() {
         {/* App icon */}
         <div>
           <Image
-            src="/app-icon.png"
+            src="/commandment/app-icon.png"
             alt="Commandment"
             width={80}
             height={80}
