@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { siteConfig } from "@/lib/config";
 
 export const SiteFooter = () => (
@@ -10,11 +12,13 @@ export const SiteFooter = () => (
         rel="noopener noreferrer"
         target="_blank"
       >
-        <img
+        <Image
           alt="Avatar of Matthew Blode"
           className="rounded-full"
           height={20}
           loading="lazy"
+          // next/image does not apply basePath to the optimiser's `url` param,
+          // so the prefix has to stay in the src.
           src="/commandment/avatar-sm.png"
           width={20}
         />
@@ -22,8 +26,7 @@ export const SiteFooter = () => (
       </a>
     </div>
     <div className="flex items-center gap-2 text-[#48484a]">
-      <span className="text-[#98989d]">v{siteConfig.version}</span>{" "}
-      &bull;
+      <span className="text-[#98989d]">v{siteConfig.version}</span> &bull;
       <a
         className="text-[#98989d] transition-colors hover:text-[#f5f5f7]"
         href={siteConfig.links.github}
