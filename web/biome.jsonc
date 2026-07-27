@@ -4,5 +4,10 @@
     "ultracite/biome/core",
     "ultracite/biome/next",
     "ultracite/biome/react"
-  ]
+  ],
+  "files": {
+    // SVGs here are minified build assets. Biome's HTML formatter expands them
+    // one attribute per line, which bloats every icon for no readability gain.
+    "includes": ["!**/*.svg"]
+  }
 }

@@ -1,16 +1,16 @@
+import { Agentation } from "agentation";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Agentation } from "agentation";
 import "./globals.css";
 
 const glide = localFont({
+  display: "swap",
   src: [
     { path: "../public/glide-variable.woff2", style: "normal" },
     { path: "../public/glide-variable-italic.woff2", style: "italic" },
   ],
   variable: "--font-glide",
   weight: "400 900",
-  display: "swap",
 });
 
 const title = "Commandment — Voice to Text for macOS, No Subscription";
@@ -19,38 +19,38 @@ const description =
 const siteUrl = "https://blode.co/commandment";
 
 export const metadata: Metadata = {
-  title,
-  description,
-  metadataBase: new URL("https://blode.co"),
   alternates: {
     canonical: siteUrl,
   },
-  verification: {
-    google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",
-  },
-  openGraph: {
-    type: "website",
-    url: siteUrl,
-    title,
-    description,
-    siteName: "Commandment",
-    images: [
-      {
-        url: "/commandment/app-icon.png",
-        width: 512,
-        height: 512,
-        alt: "Commandment app icon",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary",
-    title,
-    description,
-    images: ["/commandment/app-icon.png"],
-  },
   appleWebApp: {
     title: "Commandment",
+  },
+  description,
+  metadataBase: new URL("https://blode.co"),
+  openGraph: {
+    description,
+    images: [
+      {
+        alt: "Commandment app icon",
+        height: 512,
+        url: "/commandment/app-icon.png",
+        width: 512,
+      },
+    ],
+    siteName: "Commandment",
+    title,
+    type: "website",
+    url: siteUrl,
+  },
+  title,
+  twitter: {
+    card: "summary",
+    description,
+    images: ["/commandment/app-icon.png"],
+    title,
+  },
+  verification: {
+    google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",
   },
 };
 
