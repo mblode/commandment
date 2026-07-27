@@ -20,3 +20,5 @@ installer/dmg-background.png
 
 # Secrets
 .env
+.vercel
+.env*

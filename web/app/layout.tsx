@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { Agentation } from "agentation";
 import "./globals.css";
 
@@ -17,26 +16,27 @@ const glide = localFont({
 const title = "Commandment — Voice to Text for macOS, No Subscription";
 const description =
   "Commandment turns your voice into text instantly on macOS. Press a shortcut, speak, and paste anywhere — bring your own OpenAI API key, no subscription.";
+const siteUrl = "https://blode.co/commandment";
 
 export const metadata: Metadata = {
   title,
   description,
-  metadataBase: new URL("https://commandment.blode.co"),
+  metadataBase: new URL("https://blode.co"),
   alternates: {
-    canonical: "/",
+    canonical: siteUrl,
   },
   verification: {
     google: "mFwyBIbXTaKK4uF_NA0MzVWFyY40hPgBjFObg3rje04",
   },
   openGraph: {
     type: "website",
-    url: "https://commandment.blode.co",
+    url: siteUrl,
     title,
     description,
     siteName: "Commandment",
     images: [
       {
-        url: "/app-icon.png",
+        url: "/commandment/app-icon.png",
         width: 512,
         height: 512,
         alt: "Commandment app icon",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: "summary",
     title,
     description,
-    images: ["/app-icon.png"],
+    images: ["/commandment/app-icon.png"],
   },
   appleWebApp: {
     title: "Commandment",
@@ -61,11 +61,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link href="https://us.i.posthog.com" rel="preconnect" />
+        <link href="https://us-assets.i.posthog.com" rel="dns-prefetch" />
+      </head>
       <body className={`${glide.variable} antialiased`}>
         {children}
         {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
-      <GoogleAnalytics gaId="G-XMFQF7NCQZ" />
     </html>
   );
 }
