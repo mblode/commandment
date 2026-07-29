@@ -78,7 +78,7 @@ export default async function Page() {
         <p className="mt-5 font-light text-[#98989d] text-[14px] leading-[1.7]">
           Just press a shortcut and speak.
           <br />
-          BYO OpenAI API key — no subscription required.
+          BYO OpenAI API key, no subscription required.
         </p>
 
         {/* Download row */}
@@ -110,6 +110,43 @@ export default async function Page() {
         <span className="mt-3 text-[#636366] text-[12px]">
           {version} · Requires macOS 15
         </span>
+
+        {/*
+          The page was an icon, a tagline and a download button: 46 words, none
+          of which said what the app does with your audio or why it asks for
+          Accessibility. Both are things people want answered before they
+          install a menu bar app that listens to them.
+        */}
+        <section className="mt-16 max-w-[62ch] space-y-4 font-light text-[#98989d] text-[14px] leading-[1.7]">
+          <h2 className="font-medium text-[#c5c5ca] text-[15px]">
+            How it works
+          </h2>
+
+          <p>
+            Commandment is a dictation app that lives in the macOS menu bar.
+            Press Option and D, say the thing you were going to type, press it
+            again, and the text lands where your cursor already was. There is no
+            window and no dock icon. It runs as a menu bar agent, so the only
+            time you see it is when you go looking for it.
+          </p>
+
+          <p>
+            It is bring your own key. You paste an OpenAI API key into settings,
+            it goes into the macOS Keychain, and you pay OpenAI for the seconds
+            you actually dictate rather than paying a subscription to have it
+            sit idle. Audio is captured at 24 kHz mono and streamed to the
+            Realtime API, transcribed by default with gpt-4o-mini-transcribe.
+          </p>
+
+          <p>
+            One thing worth knowing before you install it. Putting text into
+            another app needs macOS Accessibility permission, because that is
+            the only route one app has to type into another. Grant it and
+            transcripts appear directly in whatever you had focused. Skip it and
+            nothing breaks: the transcript goes to your clipboard instead and
+            you paste it yourself.
+          </p>
+        </section>
       </main>
 
       <SiteFooter />

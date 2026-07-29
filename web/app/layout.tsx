@@ -13,9 +13,9 @@ const glide = localFont({
   weight: "400 900",
 });
 
-const title = "Commandment — Voice to Text for macOS, No Subscription";
+const title = "Commandment: Voice to Text for macOS, No Subscription";
 const description =
-  "Commandment turns your voice into text instantly on macOS. Press a shortcut, speak, and paste anywhere — bring your own OpenAI API key, no subscription.";
+  "Commandment turns your voice into text instantly on macOS. Press a shortcut, speak, and paste anywhere. Bring your own OpenAI API key, no subscription.";
 const siteUrl = "https://blode.co/commandment";
 
 export const metadata: Metadata = {
