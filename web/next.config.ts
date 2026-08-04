@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   assetPrefix: "/commandment",
   basePath: "/commandment",
+  experimental: { turbopackRustReactCompiler: true },
   reactCompiler: true,
   redirects() {
     return Promise.resolve([
