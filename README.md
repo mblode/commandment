@@ -1,45 +1,51 @@
-<p align="center">
-  <img src="commandment-macOS-Default-1024x1024@1x.png" width="128" alt="Commandment app icon">
-</p>
+<div align="center">
 
-<h1 align="center">Commandment</h1>
+# [Commandment](https://blode.co/commandment)
 
-<p align="center">
-  Open-source voice dictation for macOS. Bring your own OpenAI API key.
-</p>
+**Voice dictation for macOS that types into whatever app you already have focused, on your own OpenAI key**
 
-## How it works
+Hold a hotkey, say the thing you were going to type, and the transcript lands at your cursor.
 
-- Hold a hotkey, speak, release. Your words appear wherever you're typing
-- Streams audio to OpenAI in real time
-- Auto-inserts text into the focused app
-- API key stays in macOS Keychain — no middleman
-- Default shortcuts: `Option + D` to record, `Option + Shift + D` to open Settings
+</div>
 
 ## Install
 
-Requires an [OpenAI API key](https://platform.openai.com/api-keys) and macOS
-
-<strong><a href="https://github.com/mblode/commandment/releases/latest">Download the latest release</a></strong>, or:
-
 ```bash
-brew tap mblode/tap
-brew install --cask commandment
+brew install --cask mblode/tap/commandment
 ```
 
-## Updates
+Or [download the latest release](https://github.com/mblode/commandment/releases/latest). Requires macOS 15 Sequoia or later and an [OpenAI API key](https://platform.openai.com/api-keys).
 
-- Direct-download installs can use **Check for Updates...** from the menu bar or Settings
-- In-app updates are delivered through Sparkle appcasts with EdDSA signatures
-- Homebrew installs can continue updating with `brew upgrade --cask commandment`
+## Quickstart
 
-## Troubleshooting
+Press `Option + Shift + D` to open Settings and paste your OpenAI key. It goes into the macOS Keychain.
 
-- If Commandment is running but you can't see its menu bar icon (for example due to menu bar overflow/hidden-icon apps), press `Option + Shift + D` to open Settings directly.
+Then press `Option + D` anywhere, say a sentence, and press it again. The text appears where you were typing.
+
+## How it works
+
+- **Streaming transcription:** audio is captured at 24 kHz mono and streamed to OpenAI's Realtime API, transcribed with `gpt-4o-mini-transcribe` by default.
+- **Menu bar only:** Commandment runs as a menu bar agent, so there is no dock icon and no window.
+- **Your key, your bill:** the key sits in the macOS Keychain and requests go straight to OpenAI, with nothing in between.
+- **Accessibility is optional:** grant the permission and transcripts type themselves into the focused app. Skip it and they land on your clipboard instead.
+
+## Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| `Option + D` | Start or stop recording |
+| `Option + Shift + D` | Open Settings |
+
+Both are rebindable in Settings.
+
+## Notes
+
+- Commandment updates itself through Sparkle, on EdDSA-signed appcasts, or on demand from **Check for Updates...** in the menu bar or Settings.
+- If the menu bar icon is hidden behind an overflow app, `Option + Shift + D` still opens Settings.
 
 ## License
 
-[MIT](LICENSE.md)
+MIT
 
 ---
 
