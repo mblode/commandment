@@ -7,7 +7,7 @@ export const SiteFooter = ({ version }: { version: string }) => (
     <div className="flex items-center gap-1">
       Crafted by
       <a
-        className="flex items-center gap-2 rounded-full py-1.5 pr-2.5 pl-1.5 hover:text-ink"
+        className="flex items-center gap-2 rounded-full py-1.5 pr-2.5 pl-1.5 hover:text-ink focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         href={siteConfig.links.author}
         rel="noopener noreferrer"
         target="_blank"
@@ -31,7 +31,7 @@ export const SiteFooter = ({ version }: { version: string }) => (
         </>
       ) : null}
       <a
-        className="text-ink-subtle hover:text-ink"
+        className="text-ink-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         href={siteConfig.links.github}
         rel="noopener noreferrer"
         target="_blank"
