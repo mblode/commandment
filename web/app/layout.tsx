@@ -2,7 +2,7 @@ import { Agentation } from "agentation";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { JsonLd } from "@/components/json-ld";
-import { appId, faqId, personId, siteConfig, websiteId } from "@/lib/config";
+import { appId, personId, siteConfig, websiteId } from "@/lib/config";
 import { faqSchema } from "@/lib/faq";
 import "./globals.css";
 
@@ -88,7 +88,7 @@ const structuredData = {
       operatingSystem: "macOS 15.2",
       url: siteConfig.url,
     },
-    faqSchema(faqId),
+    faqSchema(),
   ],
 };
 
