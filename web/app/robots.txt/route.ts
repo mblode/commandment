@@ -9,9 +9,12 @@
 // expressed, and an all-yes signal only adds an unknown-directive warning in
 // Search Console.
 //
-// No `Sitemap:` line: this zone does not publish one.
+// The zone now publishes `app/sitemap.ts`, so the `Sitemap:` line points at the
+// canonical proxied URL rather than this subdomain, which 308s away.
 const body = `User-agent: *
 Allow: /
+
+Sitemap: https://blode.co/commandment/sitemap.xml
 `;
 
 export const dynamic = "force-static";
