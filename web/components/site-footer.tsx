@@ -2,12 +2,12 @@ import Image from "next/image";
 import { siteConfig } from "@/lib/config";
 import avatarSm from "@/public/avatar-sm.png";
 
-export const SiteFooter = () => (
-  <footer className="flex flex-col items-center justify-center gap-2 pt-16 pb-8 text-[#98989d] text-sm">
+export const SiteFooter = ({ version }: { version: string }) => (
+  <footer className="flex flex-col items-center justify-center gap-2 pt-16 pb-8 text-ink-subtle text-sm">
     <div className="flex items-center gap-1">
       Crafted by
       <a
-        className="flex items-center gap-2 rounded-full py-1.5 pr-2.5 pl-1.5 transition-colors hover:text-[#f5f5f7]"
+        className="flex items-center gap-2 rounded-full py-1.5 pr-2.5 pl-1.5 hover:text-ink"
         href={siteConfig.links.author}
         rel="noopener noreferrer"
         target="_blank"
@@ -23,10 +23,15 @@ export const SiteFooter = () => (
         Matthew Blode
       </a>
     </div>
-    <div className="flex items-center gap-2 text-[#48484a]">
-      <span className="text-[#98989d]">v{siteConfig.version}</span> &bull;
+    <div className="flex items-center gap-2 text-ink-faint">
+      {/* No version, no separator: the bullet only exists to divide two things. */}
+      {version ? (
+        <>
+          <span className="text-ink-subtle">{version}</span> &bull;
+        </>
+      ) : null}
       <a
-        className="text-[#98989d] transition-colors hover:text-[#f5f5f7]"
+        className="text-ink-subtle hover:text-ink"
         href={siteConfig.links.github}
         rel="noopener noreferrer"
         target="_blank"

@@ -4,6 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Apple system dark greys, named by the job they do rather than the shade they
+ * are. Kept byte-identical in rubber-duck so the two app pages read as one
+ * family, and so a colour is picked by role instead of pasted as hex.
+ */
+@theme {
+  --color-canvas: #1c1c1e;
+  --color-ink: #f5f5f7;
+  --color-ink-muted: #c5c5ca;
+  --color-ink-subtle: #98989d;
+  --color-ink-faint: #636366;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -121,5 +134,31 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/*
+ * Height animation on the FAQ disclosure with no JS and no measured heights.
+ * `interpolate-size` is what makes `block-size: auto` animatable; browsers
+ * without it skip the whole block and open instantly, which is the correct
+ * fallback rather than a broken one.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (interpolate-size: allow-keywords) {
+    :root {
+      interpolate-size: allow-keywords;
+    }
+
+    details::details-content {
+      block-size: 0;
+      overflow: hidden;
+      transition:
+        block-size 250ms ease,
+        content-visibility 250ms allow-discrete;
+    }
+
+    details[open]::details-content {
+      block-size: auto;
+    }
   }
 }
