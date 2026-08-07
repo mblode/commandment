@@ -30,10 +30,11 @@ export const SiteFooter = ({ version }: { version: string }) => (
       </a>
     </div>
     <div className="flex items-center gap-2 text-ink-faint">
-      {/* No version, no separator: the bullet only exists to divide two things. */}
+      {/* No version, no separator: the middot only exists to divide two things. */}
       {version ? (
         <>
-          <span className="text-ink-subtle">{version}</span> &bull;
+          <span className="text-ink-subtle">{version}</span>
+          <span aria-hidden="true">·</span>
         </>
       ) : null}
       <a
@@ -41,8 +42,8 @@ export const SiteFooter = ({ version }: { version: string }) => (
         href="https://blode.co/projects"
       >
         All projects
-      </a>{" "}
-      &bull;
+      </a>
+      <span aria-hidden="true">·</span>
       <a
         className="text-ink-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         href={siteConfig.links.github}
