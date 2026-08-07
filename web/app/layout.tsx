@@ -2,7 +2,16 @@ import { Agentation } from "agentation";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { JsonLd } from "@/components/json-ld";
-import { appId, personId, siteConfig, websiteId } from "@/lib/config";
+import {
+  appId,
+  breadcrumbId,
+  breadcrumbSchema,
+  orgId,
+  personId,
+  siteConfig,
+  webPageId,
+  websiteId,
+} from "@/lib/config";
 import { faqSchema } from "@/lib/faq";
 import "./globals.css";
 
@@ -53,21 +62,22 @@ export const viewport: Viewport = {
   themeColor: "#1c1c1e",
 };
 
+/*
+ * The Person and WebSite nodes are blode.co's and are referenced by `@id`, not
+ * redefined here. See the note on the ids in `lib/config.ts`.
+ */
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
     {
-      "@id": personId,
-      "@type": "Person",
-      name: siteConfig.author,
-      sameAs: [siteConfig.links.author, "https://github.com/mblode"],
-      url: siteConfig.links.author,
-    },
-    {
-      "@id": websiteId,
-      "@type": "WebSite",
+      "@id": webPageId,
+      "@type": "WebPage",
+      about: { "@id": appId },
+      breadcrumb: { "@id": breadcrumbId },
+      description: siteConfig.description,
+      inLanguage: "en-US",
+      isPartOf: { "@id": websiteId },
       name: siteConfig.name,
-      publisher: { "@id": personId },
       url: siteConfig.url,
     },
     {
@@ -86,8 +96,10 @@ const structuredData = {
         priceCurrency: "USD",
       },
       operatingSystem: "macOS 15.2",
+      publisher: { "@id": orgId },
       url: siteConfig.url,
     },
+    breadcrumbSchema(),
     faqSchema(),
   ],
 };
