@@ -18,11 +18,18 @@ import "./globals.css";
 const glide = localFont({
   display: "swap",
   src: [
-    { path: "../public/glide-variable.woff2", style: "normal" },
-    { path: "../public/glide-variable-italic.woff2", style: "italic" },
+    { path: "./fonts/glide-variable.woff2", style: "normal" },
+    { path: "./fonts/glide-variable-italic.woff2", style: "italic" },
   ],
   variable: "--font-glide",
-  weight: "400 900",
+  weight: "100 950",
+});
+
+const glideMono = localFont({
+  display: "swap",
+  src: "./fonts/glide-mono.woff2",
+  variable: "--font-glide-mono",
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -110,11 +117,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className="dark" lang="en">
+    <html className={`dark ${glide.variable} ${glideMono.variable}`} lang="en">
       <head>
         <link href={process.env.NEXT_PUBLIC_POSTHOG_HOST} rel="preconnect" />
       </head>
-      <body className={`${glide.variable} antialiased`}>
+      <body className="antialiased">
         {children}
         <JsonLd data={structuredData} />
         {process.env.NODE_ENV === "development" && <Agentation />}
