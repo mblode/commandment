@@ -22,8 +22,13 @@ export const SiteFooter = ({ version }: { version: string }) => (
         href={siteConfig.links.author}
         rel="author"
       >
+        {/*
+          Decorative, so alt="". The link's own text already reads "Matthew
+          Blode"; any alt here makes the accessible name "Matthew Blode Matthew
+          Blode". zone-conventions.md Rule 1.
+        */}
         <Image
-          alt="Matthew Blode"
+          alt=""
           className="rounded-full"
           height={20}
           loading="lazy"
