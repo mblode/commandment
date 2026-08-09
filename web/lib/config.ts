@@ -7,7 +7,9 @@ export const siteConfig = {
     github: "https://github.com/mblode/commandment",
   },
   name: "Commandment",
-  title: "Commandment | Voice to text for macOS, no subscription",
+  // `Product: what it does`, under 60 characters so the SERP does not truncate
+  // it. Colon, never a pipe or an em dash.
+  title: "Commandment: voice to text for macOS, no subscription",
   url: "https://blode.co/commandment",
 } as const;
 
@@ -34,11 +36,22 @@ export const faqId = `${siteConfig.url}/#faq`;
 export const webPageId = `${siteConfig.url}/#webpage`;
 export const breadcrumbId = `${siteConfig.url}/#breadcrumb`;
 
+/**
+ * The root crumb is named for the person, not "Home", and
+ * `components/zone-breadcrumb.tsx` renders the same three names visibly.
+ * Google treats a mismatch between the two as a markup error, so they change
+ * together.
+ */
 export const breadcrumbSchema = () => ({
   "@id": breadcrumbId,
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", item: `${host}/`, name: "Home", position: 1 },
+    {
+      "@type": "ListItem",
+      item: `${host}/`,
+      name: "Matthew Blode",
+      position: 1,
+    },
     {
       "@type": "ListItem",
       item: `${host}/projects`,

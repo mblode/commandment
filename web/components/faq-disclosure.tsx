@@ -15,7 +15,7 @@ import { faq } from "@/lib/faq";
  * the outline. The section keeps the label as `aria-label` so the region is
  * still named for anyone navigating by landmark.
  *
- * Browsers without exclusive-accordion support treat these as six independent
+ * Browsers without exclusive-accordion support treat these as independent
  * toggles, which is a fine degradation. The open and close height animation
  * lives in globals.css via `::details-content`.
  */
