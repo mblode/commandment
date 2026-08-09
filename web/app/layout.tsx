@@ -39,12 +39,17 @@ export const metadata: Metadata = {
   appleWebApp: {
     title: siteConfig.name,
   },
+  authors: [{ name: siteConfig.author, url: siteConfig.links.author }],
+  creator: siteConfig.author,
   description: siteConfig.description,
   metadataBase: new URL(siteConfig.url),
   openGraph: {
     description: siteConfig.description,
     locale: "en_US",
-    siteName: siteConfig.name,
+    // Every zone is a path on blode.co, so the site is the person. The product
+    // name already has the og:title slot; repeating it here would spend the one
+    // field in the card that could say who made the thing.
+    siteName: siteConfig.author,
     title: siteConfig.title,
     type: "website",
     url: siteConfig.url,
@@ -53,9 +58,13 @@ export const metadata: Metadata = {
     follow: true,
     index: true,
   },
-  title: siteConfig.title,
+  title: {
+    default: siteConfig.title,
+    template: `%s | ${siteConfig.name}`,
+  },
   twitter: {
     card: "summary_large_image",
+    creator: "@mattblode",
     description: siteConfig.description,
     title: siteConfig.title,
   },
