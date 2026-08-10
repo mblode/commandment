@@ -62,8 +62,13 @@ export default async function Page() {
       {/* Root page only, and matched word for word by the BreadcrumbList in
           lib/config.ts. Outside the vertically centred block so it stays at the
           top of the page rather than drifting with the hero. */}
-      <div className="mx-auto w-full max-w-[62ch] px-6 pt-8">
-        <ZoneBreadcrumb product="Commandment" />
+      {/* Padding on the outer element and the measure on the inner one, exactly
+          as <main> below, so the crumbs share the hero's left edge. Putting
+          px-6 on the max-w-[62ch] element instead would inset it by 24px. */}
+      <div className="px-6 pt-8">
+        <div className="mx-auto w-full max-w-[62ch]">
+          <ZoneBreadcrumb product="Commandment" />
+        </div>
       </div>
 
       <main className="flex flex-1 flex-col justify-center px-6 pt-10 pb-16">
