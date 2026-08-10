@@ -52,13 +52,6 @@ export const SiteFooter = ({ version }: { version: string }) => (
       ) : null}
       <a
         className="text-ink-subtle transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-        href="https://blode.co/projects"
-      >
-        All projects
-      </a>
-      <span aria-hidden="true">·</span>
-      <a
-        className="text-ink-subtle transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         href={siteConfig.links.github}
         rel="noopener noreferrer"
         target="_blank"
