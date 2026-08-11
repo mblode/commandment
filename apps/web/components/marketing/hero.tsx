@@ -18,7 +18,7 @@ export const Hero = ({
   <section className="relative overflow-hidden border-ink/15 border-b">
     <Container className="flex min-h-[calc(100svh-4rem)] flex-col pt-4 pb-8 sm:pt-8 sm:pb-12">
       <h1 className="text-ink">
-        <span className="block whitespace-nowrap font-medium text-[clamp(3.35rem,13.1vw,10.5rem)] leading-[0.82] tracking-[-0.065em]">
+        <span className="block whitespace-nowrap font-medium text-[clamp(2.6rem,13.1vw,10.5rem)] leading-[0.82] tracking-[-0.065em]">
           Commandment
         </span>
         <span className="mt-10 block max-w-[13ch] text-balance font-medium text-[clamp(2.75rem,5.3vw,4.8rem)] leading-[0.95] tracking-[-0.055em] sm:mt-14 lg:mt-16">
@@ -39,13 +39,13 @@ export const Hero = ({
             </p>
           </div>
 
-          <div className="flex max-w-full items-center gap-3 overflow-x-auto font-mono text-ink-subtle text-sm">
-            <code className="whitespace-pre">{BREW_COMMAND}</code>
+          <div className="max-w-full font-mono text-ink-subtle text-sm">
+            <code className="break-all">{BREW_COMMAND}</code>
           </div>
         </div>
 
-        <div className="min-w-0 blur-up [animation-delay:180ms]">
-          <ProductFrame description="A macOS menu bar recording meter above a Notes window, where ‘Can you send me the deck before standup tomorrow?’ appears one word at a time while Option and D are held.">
+        <div className="min-w-0">
+          <ProductFrame description="Commandment types a spoken sentence into Notes while Option+D is held.">
             <DictationMock />
           </ProductFrame>
         </div>

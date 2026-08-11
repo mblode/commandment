@@ -26,15 +26,15 @@ export const faq: FaqEntry[] = [
     // Deliberately no rate. OpenAI's per-minute price for this model changes,
     // and a number typed here becomes wrong silently.
     answer:
-      "No. Paste an OpenAI API key into Settings and OpenAI bills you for the seconds you dictate, at their current rate. Commandment adds nothing on top.",
+      "No. Add your OpenAI API key in Settings. You pay OpenAI for usage. Commandment is free.",
     id: "subscription",
     question: "Do I need a subscription?",
   },
   {
     answer:
-      "It goes into the macOS Keychain under the name Commandment, not a config file, and it outlives the app until you delete it there. Requests go straight from your Mac to OpenAI.",
+      "In macOS Keychain. It stays there until you delete it. Requests go straight from your Mac to OpenAI.",
     id: "key-safety",
-    question: "Is my OpenAI API key safe?",
+    question: "Where is my API key stored?",
   },
 ];
 
@@ -48,7 +48,7 @@ const anchor = (entry: FaqEntry) => `${siteConfig.url}#${entry.id}`;
 export const faqSchema = () => ({
   "@id": faqId,
   "@type": "FAQPage",
-  inLanguage: "en",
+  inLanguage: "en-AU",
   isPartOf: { "@id": websiteId },
   mainEntity: faq.map((entry) => ({
     "@id": anchor(entry),

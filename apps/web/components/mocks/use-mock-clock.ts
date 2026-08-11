@@ -18,8 +18,8 @@ import { useEffect, useRef, useState } from "react";
  * so first paint is a full mock rather than a box with nothing in it — which
  * also keeps it out of the running as an empty LCP candidate.
  *
- * `active` is the same condition, exposed so CSS keyframe loops (a level meter,
- * a caret) can be switched off under the same rules. A CSS animation keeps
+ * `active` is the same condition, exposed so CSS keyframe loops such as the
+ * caret can be switched off under the same rules. A CSS animation keeps
  * burning compositor time off-screen otherwise.
  */
 export const useMockClock = ({

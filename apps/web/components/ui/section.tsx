@@ -50,11 +50,7 @@ const Container = ({
 );
 
 interface SectionHeadingProps {
-  align?: "start" | "center";
   children: ReactNode;
-  className?: string;
-  eyebrow?: string;
-  lede?: ReactNode;
 }
 
 /** Every heading on these pages is a question somebody would type, so this
@@ -65,37 +61,11 @@ interface SectionHeadingProps {
  * Measure caps sit on the element rather than the container. That is what makes
  * a ragged right edge read as chosen rather than as an accident of viewport
  * width. */
-const SectionHeading = ({
-  align = "start",
-  children,
-  className,
-  eyebrow,
-  lede,
-}: SectionHeadingProps) => (
-  <div className={cn(align === "center" && "text-center", className)}>
-    {eyebrow ? (
-      <p className="mb-4 font-mono text-ink-subtle text-sm uppercase tracking-wide">
-        {eyebrow}
-      </p>
-    ) : null}
-    <h2
-      className={cn(
-        "max-w-[24ch] text-balance font-medium text-4xl text-ink tracking-[-0.035em] sm:text-5xl sm:leading-[1.05]",
-        align === "center" && "mx-auto"
-      )}
-    >
+const SectionHeading = ({ children }: SectionHeadingProps) => (
+  <div>
+    <h2 className="max-w-[24ch] text-balance font-medium text-4xl text-ink tracking-[-0.035em] sm:text-5xl sm:leading-[1.05]">
       {children}
     </h2>
-    {lede ? (
-      <p
-        className={cn(
-          "mt-5 max-w-[48ch] text-pretty text-ink-muted text-lg",
-          align === "center" && "mx-auto"
-        )}
-      >
-        {lede}
-      </p>
-    ) : null}
   </div>
 );
 

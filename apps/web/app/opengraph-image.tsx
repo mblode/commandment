@@ -17,7 +17,7 @@ export default function OpengraphImage() {
   return renderZoneOgImage({
     badge: "COMMANDMENT",
     eyebrow: "blode.co/commandment",
-    subtitle: "Voice to text, instantly.",
+    subtitle: "Talk instead of typing.",
     title: siteConfig.name,
   });
 }

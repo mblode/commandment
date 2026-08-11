@@ -2,15 +2,6 @@ import { Reveal } from "@/components/ui/reveal";
 import { Container, Section, SectionHeading } from "@/components/ui/section";
 import { SOLUTION } from "@/lib/content";
 
-/** How it works, as three steps and nothing else.
- *
- * The three steps are the whole interaction, and each one is a real keystroke
- * rather than a stage name. "Configure your workspace" is what a step is called
- * when the product does not have one.
- *
- * There is no lede. The paragraph that used to sit here restated the steps
- * before the steps, and every fact in it is elsewhere on the page — see the
- * comment above `SOLUTION` in `lib/content.ts` for where each one went. */
 export const HowItWorks = () => (
   <Section className="bg-canvas" id="how-it-works">
     <Container>
@@ -18,7 +9,7 @@ export const HowItWorks = () => (
         <SectionHeading>{SOLUTION.heading}</SectionHeading>
       </Reveal>
 
-      <Reveal delay={0.08}>
+      <Reveal>
         <ol className="mt-14 grid border-ink/20 border-t sm:grid-cols-3">
           {SOLUTION.steps.map((step, index) => (
             <li

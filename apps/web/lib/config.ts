@@ -1,7 +1,7 @@
 export const siteConfig = {
   author: "Matthew Blode",
   description:
-    "Commandment turns your voice into text instantly on macOS. Press a shortcut, speak, and the transcript lands at your cursor. Bring your own OpenAI API key, no subscription.",
+    "Hold Option+D to dictate into any Mac app using your own OpenAI API key. Free and open source.",
   links: {
     author: "https://blode.co",
     github: "https://github.com/mblode/commandment",
@@ -9,7 +9,7 @@ export const siteConfig = {
   name: "Commandment",
   // `Product: what it does`, under 60 characters so the SERP does not truncate
   // it. Colon, never a pipe or an em dash.
-  title: "Commandment: voice to text for macOS, no subscription",
+  title: "Commandment: voice to text for Mac",
   url: "https://blode.co/commandment",
 } as const;
 
