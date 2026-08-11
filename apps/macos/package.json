@@ -1,0 +1,8 @@
+{
+  "name": "@commandment/macos",
+  "private": true,
+  "scripts": {
+    "build": "make -C ../.. build",
+    "test": "make -C ../.. test"
+  }
+}

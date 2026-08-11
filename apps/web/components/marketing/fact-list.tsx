@@ -39,14 +39,14 @@ export const FactList = ({
     <Container>
       <Reveal>
         <SectionHeading>{heading}</SectionHeading>
-        <dl className="mt-8 max-w-[72ch] divide-y divide-white/5 border-white/5 border-t">
+        <dl className="mt-14 grid border-ink/20 border-t lg:grid-cols-2">
           {facts.map((fact) => (
             <div
-              className="grid gap-1 py-4 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:gap-6"
+              className="grid gap-3 border-ink/15 border-b py-7 lg:grid-cols-[minmax(0,8rem)_minmax(0,1fr)] lg:gap-6 lg:even:border-l lg:even:pl-8 lg:odd:pr-8"
               key={fact.term}
             >
-              <dt className="font-medium text-ink text-sm">{fact.term}</dt>
-              <dd className="text-pretty text-ink-muted text-sm">
+              <dt className="font-medium text-ink">{fact.term}</dt>
+              <dd className="text-pretty text-base text-ink-muted">
                 {fact.detail}
                 {fact.href ? (
                   <>
@@ -62,7 +62,7 @@ export const FactList = ({
                     */}
                     <a
                       aria-label={`Check it: ${fact.term.toLowerCase()}`}
-                      className="whitespace-nowrap text-ink underline decoration-white/25 underline-offset-4 hover:decoration-white/60 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                      className="whitespace-nowrap text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink/70 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
                       href={fact.href}
                     >
                       Check it

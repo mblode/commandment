@@ -1,6 +1,7 @@
 SCHEME = Commandment
 CONFIGURATION = Release
 DERIVED_DATA = /tmp/commandment-build
+TEST_DERIVED_DATA = /tmp/commandment-test-build
 ARCHIVE_PATH = $(DERIVED_DATA)/Commandment.xcarchive
 EXPORT_PATH = $(DERIVED_DATA)/export
 APP_NAME = Commandment
@@ -26,9 +27,11 @@ test:
 	xcodebuild -scheme $(SCHEME) \
 		-configuration Debug \
 		-destination 'platform=macOS' \
-		-derivedDataPath $(DERIVED_DATA) \
+		-derivedDataPath $(TEST_DERIVED_DATA) \
+		CODE_SIGNING_ALLOWED=NO \
+		CODE_SIGNING_REQUIRED=NO \
 		MARKETING_VERSION=$(VERSION) \
-		test
+	test
 
 archive:
 	xcodebuild -scheme $(SCHEME) \
@@ -93,4 +96,4 @@ notarize: dmg
 	@echo "Notarized: $(DMG_PATH)"
 
 clean:
-	rm -rf $(DERIVED_DATA)
+	rm -rf $(DERIVED_DATA) $(TEST_DERIVED_DATA)

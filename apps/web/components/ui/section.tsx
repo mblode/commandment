@@ -11,7 +11,10 @@ const Section = ({
   children,
   ...props
 }: ComponentProps<"section">) => (
-  <section className={cn("scroll-mt-20 py-16 sm:py-24", className)} {...props}>
+  <section
+    className={cn("scroll-mt-24 py-20 sm:py-28 lg:py-36", className)}
+    {...props}
+  >
     {children}
   </section>
 );
@@ -39,7 +42,7 @@ const Container = ({
   ...props
 }: ComponentProps<"div">) => (
   <div
-    className={cn("mx-auto w-full max-w-5xl px-4 sm:px-6", className)}
+    className={cn("mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-10", className)}
     {...props}
   >
     {children}
@@ -71,13 +74,13 @@ const SectionHeading = ({
 }: SectionHeadingProps) => (
   <div className={cn(align === "center" && "text-center", className)}>
     {eyebrow ? (
-      <p className="mb-3 font-medium text-ink-subtle text-sm tracking-wide">
+      <p className="mb-4 font-mono text-ink-subtle text-sm uppercase tracking-wide">
         {eyebrow}
       </p>
     ) : null}
     <h2
       className={cn(
-        "max-w-[40ch] text-balance font-medium text-2xl text-ink tracking-tight sm:text-3xl sm:tracking-[-0.02em]",
+        "max-w-[24ch] text-balance font-medium text-4xl text-ink tracking-[-0.035em] sm:text-5xl sm:leading-[1.05]",
         align === "center" && "mx-auto"
       )}
     >
@@ -86,7 +89,7 @@ const SectionHeading = ({
     {lede ? (
       <p
         className={cn(
-          "mt-4 max-w-[50ch] text-pretty text-ink-muted text-lg",
+          "mt-5 max-w-[48ch] text-pretty text-ink-muted text-lg",
           align === "center" && "mx-auto"
         )}
       >

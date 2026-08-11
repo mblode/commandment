@@ -10,6 +10,7 @@ Requires Xcode 16+ and macOS 15.2+ SDK.
 git clone https://github.com/mblode/commandment.git
 cd commandment
 open Commandment.xcodeproj
+npm install
 ```
 
 Or build from the command line:
@@ -17,6 +18,10 @@ Or build from the command line:
 ```bash
 xcodebuild -scheme Commandment -configuration Debug build -derivedDataPath /tmp/commandment-build
 ```
+
+The macOS source lives in `apps/macos`, its tests in `apps/macos-tests`, and the
+Next.js landing page in `apps/web`. Turborepo commands run from the repository
+root; use `npm run web:dev` for the site or `npm run build` for both apps.
 
 ## Making changes
 

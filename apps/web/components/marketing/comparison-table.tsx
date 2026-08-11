@@ -1,5 +1,5 @@
 import { Reveal } from "@/components/ui/reveal";
-import { Container, Section, SectionHeading } from "@/components/ui/section";
+import { Container, Section } from "@/components/ui/section";
 import { COMPARED_ON, COMPARISON } from "@/lib/content";
 
 /**
@@ -25,10 +25,12 @@ import { COMPARED_ON, COMPARISON } from "@/lib/content";
 const NOTE_ID = "comparison-note";
 
 export const ComparisonTable = () => (
-  <Section id="comparison">
+  <Section className="bg-night text-night-ink" id="comparison">
     <Container>
       <Reveal>
-        <SectionHeading>{COMPARISON.heading}</SectionHeading>
+        <h2 className="max-w-[18ch] text-balance font-medium text-4xl text-night-ink tracking-[-0.04em] sm:text-6xl sm:leading-[1.05]">
+          {COMPARISON.heading}
+        </h2>
 
         {/* The provenance line sits OUTSIDE the scroller.
             As a `<caption>` it inherited the table's `min-w-[44rem]`, so on a
@@ -38,7 +40,10 @@ export const ComparisonTable = () => (
             claim and a checked claim, so it cannot be the part that scrolls
             away. `aria-describedby` keeps it attached to the table for anyone
             who reaches the table first. */}
-        <p className="mt-8 max-w-[60ch] text-ink-faint text-sm" id={NOTE_ID}>
+        <p
+          className="mt-8 max-w-[60ch] text-base text-night-muted sm:text-sm"
+          id={NOTE_ID}
+        >
           Checked against each vendor&rsquo;s pricing pages on {COMPARED_ON}.
           They ship often, so check first.
         </p>
@@ -52,26 +57,26 @@ export const ComparisonTable = () => (
         <section
           aria-describedby={NOTE_ID}
           aria-label="Feature and pricing comparison"
-          className="-mx-4 mt-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+          className="-mx-5 mt-6 overflow-x-auto px-5 sm:-mx-8 sm:px-8 lg:mx-0 lg:px-0"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard-reachable — WCAG 2.1 G202.
           tabIndex={0}
         >
-          <table className="w-full min-w-[38rem] border-collapse text-left text-sm">
+          <table className="w-full min-w-[46rem] border-collapse text-left text-base">
             <caption className="sr-only">
               How Commandment compares to Wispr Flow, Superwhisper and Apple
               Dictation
             </caption>
             <thead>
-              <tr className="border-white/10 border-b">
+              <tr className="border-white/20 border-b">
                 {/* Pinned with the row labels below it, so the header row and the
                     label column scroll as one. */}
-                <td className="sticky left-0 z-10 bg-canvas py-3 pr-4" />
+                <td className="sticky left-0 z-10 bg-night py-4 pr-5" />
                 {COMPARISON.columns.map((column, index) => (
                   <th
                     className={
                       index === 0
-                        ? "py-3 pr-4 font-medium text-ink"
-                        : "py-3 pr-4 font-medium text-ink-muted"
+                        ? "py-4 pr-5 font-medium text-signal"
+                        : "py-4 pr-5 font-medium text-night-muted"
                     }
                     key={column}
                     scope="col"
@@ -83,7 +88,7 @@ export const ComparisonTable = () => (
             </thead>
             <tbody>
               {COMPARISON.rows.map((row) => (
-                <tr className="border-white/5 border-b" key={row.label}>
+                <tr className="border-white/10 border-b" key={row.label}>
                   {/* `sticky left-0` is the difference between a comparison and
                       a column of orphaned values. At 390px the table is 608px
                       wide, so panning to the far end used to scroll the row
@@ -92,7 +97,7 @@ export const ComparisonTable = () => (
                       A screen-reader user always had the association through
                       `scope="row"`; the sighted phone user did not. */}
                   <th
-                    className="sticky left-0 z-10 bg-canvas py-3 pr-4 font-medium text-ink-subtle"
+                    className="sticky left-0 z-10 bg-night py-5 pr-5 font-medium text-night-muted"
                     scope="row"
                   >
                     {row.label}
@@ -101,8 +106,8 @@ export const ComparisonTable = () => (
                     <td
                       className={
                         index === 0
-                          ? "py-3 pr-4 text-ink"
-                          : "py-3 pr-4 text-ink-muted"
+                          ? "py-5 pr-5 text-night-ink"
+                          : "py-5 pr-5 text-night-muted"
                       }
                       key={`${row.label}-${COMPARISON.columns[index]}`}
                     >
@@ -115,7 +120,7 @@ export const ComparisonTable = () => (
           </table>
         </section>
 
-        <p className="mt-6 max-w-[65ch] text-pretty text-ink-muted">
+        <p className="mt-10 max-w-[65ch] text-pretty text-base text-night-muted">
           {COMPARISON.honesty}
         </p>
       </Reveal>

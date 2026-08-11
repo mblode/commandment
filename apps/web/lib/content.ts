@@ -50,9 +50,13 @@ export const PAGE_UPDATED_LABEL = "11 August 2026";
  * typed query reads as bait to a human and gains nothing with a machine that is
  * already reading the h2 below it. */
 export const HERO = {
-  headline:
-    "Voice dictation for macOS that types into any app, on your own OpenAI key.",
-  subhead: "Hold Option+D, talk, let go. The text is already in the field.",
+  downloadNote: "Free and MIT licensed",
+  headline: "Say it once. It’s already typed.",
+  requirement: "macOS 15.2+",
+  shortcutLabel: "⌥ D · hold to talk",
+  subhead:
+    "Hold Option+D, speak, then let go. Commandment puts the transcript at your cursor in any Mac app.",
+  utilityLabel: "Menu bar utility for macOS",
 } as const;
 
 /*
@@ -96,7 +100,7 @@ export const SOLUTION = {
   steps: [
     {
       body: "Anywhere. There is no window to find first.",
-      title: "Press Option+D.",
+      title: "Hold Option+D.",
     },
     {
       body: "The menu bar icon shows it is listening.",
@@ -104,7 +108,7 @@ export const SOLUTION = {
     },
     {
       body: "The text appears where your cursor already was.",
-      title: "Press it again.",
+      title: "Let go.",
     },
   ],
 } as const;
@@ -127,6 +131,12 @@ export const AUDIO_ROUTE = {
   body: "Your microphone, then Commandment, then OpenAI at 24 kHz mono on your own key. A temporary WAV sits in the system temp directory, overwritten by the next take. There is no Commandment server. Accessibility permission only lets it type for you. Decline it and the transcript goes to your clipboard.",
   heading: "Where does my audio go?",
   id: "audio",
+  stops: [
+    { detail: "24 kHz mono", name: "Your mic" },
+    { detail: "Temporary WAV", name: "Commandment" },
+    { detail: "Your API key", name: "OpenAI" },
+    { detail: "Or your clipboard", name: "Your cursor" },
+  ],
 } as const;
 
 /**
@@ -229,7 +239,7 @@ export const COMPARISON = {
  * an answer about the product.
  *
  * Note what is NOT claimed: the app is notarised but it is *not* sandboxed —
- * `Commandment/Commandment.entitlements` carries no `com.apple.security.app-sandbox`
+ * `apps/macos/Commandment.entitlements` carries no `com.apple.security.app-sandbox`
  * key. Saying "sandboxed and notarised" would have been one word of polish and
  * one false statement.
  */
@@ -250,7 +260,7 @@ export const PROOF = {
   rows: [
     {
       detail: "MIT, so fork it and ship it.",
-      href: `${REPO}/blob/main/LICENSE`,
+      href: `${REPO}/blob/main/LICENSE.md`,
       term: "Licence",
     },
     {
@@ -260,19 +270,19 @@ export const PROOF = {
     },
     {
       detail: "The macOS Keychain, never a config file.",
-      href: `${REPO}/blob/main/Commandment/KeychainManager.swift`,
+      href: `${REPO}/blob/main/apps/macos/KeychainManager.swift`,
       term: "Your OpenAI key",
     },
     {
       detail:
         "24 kHz mono to the Realtime API via gpt-4o-mini-transcribe, in a language you set or it detects.",
-      href: `${REPO}/blob/main/Commandment/RealtimeTranscriptionClient.swift`,
+      href: `${REPO}/blob/main/apps/macos/RealtimeTranscriptionClient.swift`,
       term: "Audio path",
     },
     {
       detail:
         "Option+D records, Option+Shift+D opens Settings, both rebindable, plus launch at login.",
-      href: `${REPO}/blob/main/Commandment/HotkeyManager.swift`,
+      href: `${REPO}/blob/main/apps/macos/HotkeyManager.swift`,
       term: "Default shortcuts",
     },
     {
@@ -286,8 +296,8 @@ export const PROOF = {
 export const FAQ_HEADING = "What do people ask before installing?";
 
 export const CLOSING = {
-  heading: "Ready to stop typing it out?",
-  lede: "Free, MIT licensed, no account. Speak the next thing instead of typing it.",
+  heading: "Say the next thing.",
+  lede: "Commandment is free, MIT licensed and needs no account. Bring your OpenAI key and dictate anywhere on your Mac.",
 } as const;
 
 export const BREW_COMMAND = "brew install --cask mblode/tap/commandment";

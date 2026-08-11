@@ -27,28 +27,29 @@ export const ClosingCta = ({
   downloadUrl: string;
   version: string;
 }) => (
-  <Section className="border-white/5 border-t">
+  <Section className="border-ink/15 border-t bg-paper">
     <Container>
       <Reveal>
-        <h2 className="max-w-[24ch] text-balance font-semibold text-3xl text-ink tracking-tight">
+        <h2 className="max-w-[12ch] text-balance font-medium text-6xl text-ink leading-[0.92] tracking-[-0.055em] sm:text-8xl">
           {CLOSING.heading}
         </h2>
-        <p className="mt-4 max-w-[50ch] text-pretty text-ink-muted text-lg">
+        <p className="mt-8 max-w-[42ch] text-pretty text-ink-muted text-xl sm:text-2xl">
           {CLOSING.lede}
         </p>
 
-        <div className="mt-8">
+        <div className="mt-10">
           <DownloadButton href={downloadUrl} />
         </div>
 
-        <code className="mt-4 block max-w-full overflow-x-auto whitespace-pre rounded-lg bg-surface-1 px-3 py-2 text-left font-mono text-ink-muted text-sm">
-          {BREW_COMMAND}
-        </code>
-
-        <p className="mt-6 text-ink-faint text-sm">
-          {version ? `${version} · ` : ""}Requires macOS 15.2 · Last updated{" "}
-          <time dateTime={PAGE_UPDATED}>{PAGE_UPDATED_LABEL}</time>
-        </p>
+        <div className="mt-14 flex flex-col gap-4 border-ink/15 border-t pt-5 font-mono text-ink-subtle text-sm sm:flex-row sm:items-center sm:justify-between">
+          <code className="max-w-full overflow-x-auto whitespace-pre">
+            {BREW_COMMAND}
+          </code>
+          <p className="tabular-nums">
+            {version ? `${version} · ` : ""}macOS 15.2+ · Updated{" "}
+            <time dateTime={PAGE_UPDATED}>{PAGE_UPDATED_LABEL}</time>
+          </p>
+        </div>
       </Reveal>
     </Container>
   </Section>
