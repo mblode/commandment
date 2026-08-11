@@ -23,17 +23,17 @@ const words = (text: string) => text.split(WHITESPACE).filter(Boolean).length;
 
 describe("the answer block", () => {
   /**
-   * 40-60 words. Under 40 and the paragraph has dropped the qualifier that made
-   * it true; over 60 and an answer engine truncates it mid-clause, which quotes
+   * 30-40 words. Under 30 and the paragraph has dropped the qualifier that made
+   * it true; over 40 and an answer engine truncates it mid-clause, which quotes
    * you saying half of something.
    *
    * This is a real band, not a style preference — it is the reason the copy
    * lives in `lib/content.ts` as a constant instead of inline in JSX, because a
    * string in JSX cannot be counted by anything.
    */
-  it("stays inside the 40-60 word band", () => {
-    expect(words(ANSWER_TEXT)).toBeGreaterThanOrEqual(40);
-    expect(words(ANSWER_TEXT)).toBeLessThanOrEqual(60);
+  it("stays inside the 30-40 word band", () => {
+    expect(words(ANSWER_TEXT)).toBeGreaterThanOrEqual(30);
+    expect(words(ANSWER_TEXT)).toBeLessThanOrEqual(40);
   });
 
   /** It must survive with nothing around it: an answer engine lifts the
@@ -48,7 +48,7 @@ describe("the answer block", () => {
     // Apostrophes are entity-encoded on the way out, so compare on a stretch
     // that has none rather than escaping the whole paragraph.
     expect(html).toContain("Commandment is a free macOS menu bar app");
-    expect(html).toContain("You pay OpenAI for the seconds you dictate.");
+    expect(html).toContain("Commandment account or subscription.");
   });
 });
 

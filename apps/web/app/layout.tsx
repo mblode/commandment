@@ -110,13 +110,12 @@ export const viewport: Viewport = {
  * here that a reviewer cannot find is a markup error, not a marketing decision.
  */
 const FEATURE_LIST = [
-  "Dictate into any macOS application with a global shortcut",
-  "Streaming transcription through the OpenAI Realtime API",
-  "Bring your own OpenAI API key, stored in the macOS Keychain",
-  "Types the transcript at your cursor with Accessibility permission",
-  "Falls back to the clipboard without Accessibility permission",
-  "Runs as a menu bar agent with no dock icon or window",
-  "Rebindable record and settings shortcuts",
+  "Dictate into any Mac app with Option+D",
+  "Live transcription with OpenAI",
+  "API key stored in macOS Keychain",
+  "Type at the cursor or copy to the clipboard",
+  "Menu bar app with no Dock icon",
+  "Change the record and Settings shortcuts",
 ];
 
 const structuredData = (version: string) => ({
@@ -132,7 +131,7 @@ const structuredData = (version: string) => ({
       // clock: "changed on every deploy" is not a freshness signal.
       dateModified: PAGE_UPDATED,
       description: siteConfig.description,
-      inLanguage: "en-US",
+      inLanguage: "en-AU",
       isPartOf: { "@id": websiteId },
       name: siteConfig.name,
       url: siteConfig.url,
@@ -152,7 +151,7 @@ const structuredData = (version: string) => ({
       image: `${siteConfig.url}/opengraph-image`,
       isAccessibleForFree: true,
       isPartOf: { "@id": websiteId },
-      license: `${siteConfig.links.github}/blob/main/LICENSE`,
+      license: `${siteConfig.links.github}/blob/main/LICENSE.md`,
       name: siteConfig.name,
       offers: {
         "@type": "Offer",
@@ -190,12 +189,18 @@ export default async function RootLayout({
   return (
     <html
       className={`${glide.variable} ${glideItalic.variable} ${glideMono.variable}`}
-      lang="en"
+      lang="en-AU"
     >
       <head>
         <link href={process.env.NEXT_PUBLIC_POSTHOG_HOST} rel="preconnect" />
       </head>
       <body className="antialiased">
+        <a
+          className="fixed top-3 left-3 z-100 -translate-y-20 rounded-md bg-ink px-4 py-3 text-paper focus-visible:translate-y-0 focus-visible:outline-2 focus-visible:outline-signal focus-visible:outline-offset-2"
+          href="#main-content"
+        >
+          Skip to content
+        </a>
         {children}
         <JsonLd data={structuredData(version)} />
         {process.env.NODE_ENV === "development" && <Agentation />}

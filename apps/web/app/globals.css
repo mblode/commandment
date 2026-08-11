@@ -9,20 +9,14 @@
   --color-ink: #171613;
   --color-ink-muted: #59554d;
   --color-ink-subtle: #716b61;
-  --color-ink-faint: #81796d;
   --color-ink-ghost: #c9c1b4;
   --color-paper: #f8f5ef;
   --color-paper-deep: #e7e0d4;
   --color-signal: #f24f18;
   --color-signal-deep: #a62d0a;
   --color-night: #121310;
-  --color-night-raised: #1b1d19;
-  --color-night-high: #262923;
   --color-night-ink: #f5f1e8;
   --color-night-muted: #aaa69d;
-
-  --ease-out-quint: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
@@ -111,55 +105,24 @@
 
   html {
     background: var(--background);
-    scroll-behavior: smooth;
   }
 
   body {
+    font-kerning: normal;
+    font-variant-ligatures: common-ligatures contextual;
     @apply bg-background text-foreground;
   }
 
   ::selection {
-    color: var(--color-paper);
+    color: var(--color-ink);
     background: var(--color-signal);
   }
-}
-
-@utility paper-field {
-  background-color: var(--color-canvas);
-  background-image:
-    linear-gradient(rgb(23 22 19 / 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(23 22 19 / 0.035) 1px, transparent 1px);
-  background-size: 4rem 4rem;
 }
 
 @utility raised {
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.08),
     0 0 0 1px rgb(255 255 255 / 0.08);
-}
-
-@utility product-shadow {
-  box-shadow:
-    0 2px 0 rgb(23 22 19 / 0.12),
-    0 28px 70px -28px rgb(23 22 19 / 0.48);
-}
-
-@keyframes blur-up {
-  from {
-    filter: blur(8px);
-    opacity: 0;
-    transform: translateY(12px);
-  }
-}
-
-@keyframes meter {
-  0%,
-  100% {
-    transform: scaleY(0.35);
-  }
-  50% {
-    transform: scaleY(1);
-  }
 }
 
 @keyframes caret {
@@ -173,24 +136,15 @@
   }
 }
 
-@keyframes signal-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgb(242 79 24 / 0.35);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgb(242 79 24 / 0);
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .blur-up {
-    animation: blur-up 0.7s var(--ease-out-quint) both;
-  }
-
-  .signal-pulse {
-    animation: signal-pulse 1.8s ease-out infinite;
-  }
+code,
+kbd {
+  font-variant-ligatures: none;
 }
 
 @media (prefers-reduced-transparency: reduce) {

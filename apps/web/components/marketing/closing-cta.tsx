@@ -8,18 +8,6 @@ import {
   PAGE_UPDATED_LABEL,
 } from "@/lib/content";
 
-/**
- * The last thing on the page, and the same action as the first thing.
- *
- * One button, the same words as the hero. A reader who has got this far has read
- * the comparison and the FAQ; offering them a second, different next step here
- * is asking them to make the decision again.
- *
- * The `<time>` is the visible half of a freshness signal whose other half is
- * `WebPage.dateModified`. Both read `PAGE_UPDATED` from `lib/content.ts`, as does
- * `app/sitemap.ts`, so the date a reader sees and the date a crawler is told
- * cannot drift apart.
- */
 export const ClosingCta = ({
   downloadUrl,
   version,
@@ -38,13 +26,11 @@ export const ClosingCta = ({
         </p>
 
         <div className="mt-10">
-          <DownloadButton href={downloadUrl} />
+          <DownloadButton href={downloadUrl} tone="secondary" />
         </div>
 
         <div className="mt-14 flex flex-col gap-4 border-ink/15 border-t pt-5 font-mono text-ink-subtle text-sm sm:flex-row sm:items-center sm:justify-between">
-          <code className="max-w-full overflow-x-auto whitespace-pre">
-            {BREW_COMMAND}
-          </code>
+          <code className="max-w-full break-all">{BREW_COMMAND}</code>
           <p className="tabular-nums">
             {version ? `${version} · ` : ""}macOS 15.2+ · Updated{" "}
             <time dateTime={PAGE_UPDATED}>{PAGE_UPDATED_LABEL}</time>

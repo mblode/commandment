@@ -30,7 +30,7 @@ const HOME = "https://blode.co";
 const PROJECTS = `${HOME}/projects`;
 
 const linkClassName =
-  "underline decoration-current/25 underline-offset-2 hover:text-ink hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
+  "inline-flex min-h-11 items-center underline decoration-current/25 underline-offset-2 hover:text-ink hover:decoration-current focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
 
 const Separator = () => (
   // Decorative: the <ol> already conveys the structure to assistive tech.
