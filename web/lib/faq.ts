@@ -19,51 +19,22 @@ export interface FaqEntry {
   question: string;
 }
 
+/** Only the two unresolved install objections. Everything else is answered by
+ * the hero, comparison, audio route, or footer. */
 export const faq: FaqEntry[] = [
   {
+    // Deliberately no rate. OpenAI's per-minute price for this model changes,
+    // and a number typed here becomes wrong silently.
     answer:
-      "No. Paste an OpenAI API key into Settings and you pay OpenAI for the seconds you actually dictate, rather than a monthly fee to have it sit idle. The key goes into the macOS Keychain.",
+      "No. Paste an OpenAI API key into Settings and OpenAI bills you for the seconds you dictate, at their current rate. Commandment adds nothing on top.",
     id: "subscription",
     question: "Do I need a subscription?",
   },
   {
     answer:
-      "Audio is captured at 24 kHz mono and streamed to the OpenAI Realtime API on your own key, transcribed by gpt-4o-mini-transcribe. One temporary WAV sits in the system temp directory and is overwritten on the next take. Nothing else receives it.",
-    id: "audio",
-    question: "Where does my audio go?",
-  },
-  {
-    answer:
-      "Typing into another app is the one thing macOS puts behind Accessibility, and that is how transcripts reach your cursor. Skip the prompt and nothing breaks: the transcript goes to your clipboard and you paste it yourself.",
-    id: "accessibility",
-    question: "Why does it need Accessibility permission?",
-  },
-  {
-    answer:
-      "No window and no dock icon. It runs as a menu bar agent, so the only time you see it is when you go looking for it.",
-    id: "menu-bar",
-    question: "Is there a window to manage?",
-  },
-  {
-    answer:
-      "Option+D starts and stops recording. Option+Shift+D opens Settings. Both rebind in Settings.",
-    id: "shortcuts",
-    question: "What are the shortcuts?",
-  },
-  {
-    answer:
-      "Download the DMG from the latest GitHub release, or install from the Homebrew tap. Requires macOS 15.2 or later.",
-    code: "brew install --cask mblode/tap/commandment",
-    id: "install",
-    question: "How do I install it?",
-  },
-  // The identity question. Every zone carries one, so the answer to "who makes
-  // this" is on the page and in the graph rather than only in a footer credit.
-  {
-    answer:
-      "Commandment is built by Matthew Blode, a product leader and engineer in Melbourne.",
-    id: "who",
-    question: "Who makes Commandment?",
+      "It goes into the macOS Keychain under the name Commandment, not a config file, and it outlives the app until you delete it there. Requests go straight from your Mac to OpenAI.",
+    id: "key-safety",
+    question: "Is my OpenAI API key safe?",
   },
 ];
 

@@ -1,10 +1,12 @@
-import { renderZoneOgImage } from "@/app/og-image-shared";
+import {
+  OG_CONTENT_TYPE,
+  OG_SIZE,
+  renderZoneOgImage,
+} from "@/app/og-image-shared";
 import { siteConfig } from "@/lib/config";
 
-export {
-  OG_CONTENT_TYPE as contentType,
-  OG_SIZE as size,
-} from "@/app/og-image-shared";
+export const contentType = OG_CONTENT_TYPE;
+export const size = OG_SIZE;
 
 export const alt = "Commandment: voice to text for macOS";
 
