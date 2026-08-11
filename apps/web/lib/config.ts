@@ -32,7 +32,6 @@ export const orgId = `${host}/#organization`;
 
 // Zone-local nodes keep the zone in the id.
 export const appId = `${siteConfig.url}/#software`;
-export const faqId = `${siteConfig.url}/#faq`;
 export const webPageId = `${siteConfig.url}/#webpage`;
 export const breadcrumbId = `${siteConfig.url}/#breadcrumb`;
 

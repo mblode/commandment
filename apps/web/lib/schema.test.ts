@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { breadcrumbSchema } from "@/lib/config";
-import { faqSchema } from "@/lib/faq";
 
 /**
  * Structural rules for the `@graph`, each of which has broken somewhere in this
@@ -18,7 +17,7 @@ import { faqSchema } from "@/lib/faq";
  * module-private constant. Keep the node list in step with that file — a node
  * added there and not here is simply untested, which is the failure mode this
  * comment exists to make visible. */
-const graph = [breadcrumbSchema(), faqSchema()];
+const graph = [breadcrumbSchema()];
 
 const ZONE_ENTITY_REDEFINITION =
   /^https:\/\/blode\.co\/commandment\/?#(person|website|organization)$/u;
@@ -47,17 +46,6 @@ describe("the graph", () => {
     for (const id of ids(graph)) {
       expect(id.startsWith("https://blode.co/commandment")).toBe(true);
     }
-  });
-});
-
-describe("the FAQPage node", () => {
-  it("is tied to the WebSite rather than left disconnected", () => {
-    // A bare FAQPage with no `isPartOf` is a snippet floating on the page. It is
-    // the shape the two Convene SEO pages currently ship and it is what the
-    // fleet rule against disconnected nodes exists to stop.
-    expect(faqSchema().isPartOf).toEqual({
-      "@id": "https://blode.co/#website",
-    });
   });
 });
 

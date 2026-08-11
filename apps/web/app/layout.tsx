@@ -13,7 +13,6 @@ import {
   websiteId,
 } from "@/lib/config";
 import { PAGE_UPDATED } from "@/lib/content";
-import { faqSchema } from "@/lib/faq";
 import { getLatestRelease } from "@/lib/release";
 import "./globals.css";
 
@@ -169,7 +168,6 @@ const structuredData = (version: string) => ({
       url: siteConfig.url,
     },
     breadcrumbSchema(),
-    faqSchema(),
   ],
 });
 

@@ -1,10 +1,8 @@
-import Image from "next/image";
-
 import { DownloadButton } from "@/components/marketing/download-button";
 import { DictationMock } from "@/components/mocks/dictation-mock";
 import { ProductFrame } from "@/components/mocks/product-frame";
 import { Container } from "@/components/ui/section";
-import { BREW_COMMAND, HERO } from "@/lib/content";
+import { HERO } from "@/lib/content";
 
 export const Hero = ({
   downloadUrl,
@@ -32,15 +30,18 @@ export const Hero = ({
             {HERO.subhead}
           </p>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <DownloadButton href={downloadUrl} />
-            <p className="text-base text-ink-subtle sm:text-sm">
-              {HERO.downloadNote}
+          <div className="flex flex-col items-start gap-3">
+            <div className="flex flex-wrap items-center gap-4">
+              <DownloadButton href={downloadUrl} />
+              <p className="text-base text-ink-subtle sm:text-sm">
+                {HERO.downloadNote}
+              </p>
+            </div>
+            <p className="font-mono text-ink-subtle text-sm tabular-nums">
+              {[HERO.trustLabel, version, fileSizeMB, HERO.requirement]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
-          </div>
-
-          <div className="max-w-full font-mono text-ink-subtle text-sm">
-            <code className="break-all">{BREW_COMMAND}</code>
           </div>
         </div>
 
@@ -49,23 +50,6 @@ export const Hero = ({
             <DictationMock />
           </ProductFrame>
         </div>
-      </div>
-
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-ink/15 border-t pt-4 font-mono text-ink-subtle text-sm">
-        <div className="flex items-center gap-3">
-          <Image
-            alt=""
-            className="size-8 shrink-0 rounded-[22%]"
-            height={32}
-            preload
-            src="/commandment/app-icon.png"
-            width={32}
-          />
-          <span>{HERO.utilityLabel}</span>
-        </div>
-        <p className="tabular-nums">
-          {[version, fileSizeMB, HERO.requirement].filter(Boolean).join(" · ")}
-        </p>
       </div>
     </Container>
   </section>

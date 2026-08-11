@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -49,24 +49,4 @@ const Container = ({
   </div>
 );
 
-interface SectionHeadingProps {
-  children: ReactNode;
-}
-
-/** Every heading on these pages is a question somebody would type, so this
- * renders an `h2` and the caller supplies the question. Hierarchy is size and
- * weight only: no uppercase-tracked eyebrow, which is the label style that
- * makes a page look like it came out of a template.
- *
- * Measure caps sit on the element rather than the container. That is what makes
- * a ragged right edge read as chosen rather than as an accident of viewport
- * width. */
-const SectionHeading = ({ children }: SectionHeadingProps) => (
-  <div>
-    <h2 className="max-w-[24ch] text-balance font-medium text-4xl text-ink tracking-[-0.035em] sm:text-5xl sm:leading-[1.05]">
-      {children}
-    </h2>
-  </div>
-);
-
-export { Container, Section, SectionHeading };
+export { Container, Section };
