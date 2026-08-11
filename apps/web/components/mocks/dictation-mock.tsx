@@ -73,68 +73,66 @@ export const DictationMock = () => {
   const settled = step >= RELEASE_STEP;
 
   return (
-    <div className="select-none" ref={ref}>
-      {/* Menu bar. Right-aligned status items, the way the real one sits. */}
-      <div className="flex items-center justify-end gap-3 border-white/5 border-b bg-surface-0/80 px-3 py-1.5">
-        <div className="flex h-3.5 items-end gap-[2px]">
-          {recording ? (
-            BAR_HEIGHTS.map((height, index) => (
-              <span
-                className={cn(
-                  "w-[2px] origin-bottom rounded-full bg-ink",
-                  active && "animate-[meter_620ms_ease-in-out_infinite]"
-                )}
-                key={height}
-                style={{
-                  animationDelay: `${index * 70}ms`,
-                  height: `${height}%`,
-                }}
-              />
-            ))
-          ) : (
-            /* The resting glyph the meter grows out of. */
-            <span className="mb-[1px] h-2.5 w-[3px] rounded-full bg-ink-subtle" />
-          )}
+    <div className="select-none bg-night text-night-ink" ref={ref}>
+      <div className="flex items-center justify-between border-white/8 border-b px-4 py-2 sm:px-5">
+        <p className="font-medium text-night-muted text-sm">Commandment</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-3.5 items-end gap-[2px]">
+            {recording ? (
+              BAR_HEIGHTS.map((height, index) => (
+                <span
+                  className={cn(
+                    "w-[2px] origin-bottom rounded-full bg-signal",
+                    active && "animate-[meter_620ms_ease-in-out_infinite]"
+                  )}
+                  key={height}
+                  style={{
+                    animationDelay: `${index * 70}ms`,
+                    height: `${height}%`,
+                  }}
+                />
+              ))
+            ) : (
+              <span className="mb-px h-2.5 w-[3px] rounded-full bg-night-muted" />
+            )}
+          </div>
+          <p className="font-mono text-night-muted text-xs tabular-nums">
+            9:41
+          </p>
         </div>
-        <span className="font-mono text-[10px] text-ink-subtle tabular-nums">
-          9:41
-        </span>
       </div>
 
-      {/* The ordinary app the text lands in. Deliberately mundane — the point is
-          that it is not this app's own window. */}
-      <div className="px-4 pt-4 pb-5 sm:px-6 sm:pt-6 sm:pb-8">
-        <div className="raised rounded-xl bg-surface-2">
-          <div className="border-white/5 border-b px-3 py-2">
-            <p className="font-medium text-[11px] text-ink-subtle">
-              Untitled — Notes
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="overflow-hidden rounded-[min(1.5vw,1rem)] bg-night-raised outline-1 outline-white/10 -outline-offset-1">
+          <div className="flex items-center gap-3 border-white/8 border-b px-4 py-3">
+            <div aria-hidden="true" className="flex gap-1.5">
+              <span className="size-2.5 rounded-full bg-signal" />
+              <span className="size-2.5 rounded-full bg-white/15" />
+              <span className="size-2.5 rounded-full bg-white/15" />
+            </div>
+            <p className="font-medium text-night-muted text-sm">
+              Untitled note
             </p>
           </div>
-          {/* Fixed height, sized to the tallest state. The sentence wraps to two
-              lines on narrow viewports and must not push the frame open. */}
-          <div className="min-h-[5.5rem] px-3 py-3 sm:min-h-[5rem]">
-            <p className="text-pretty text-ink text-sm leading-relaxed sm:text-base">
+
+          <div className="min-h-40 p-5 sm:min-h-48 sm:p-7 lg:min-h-52 lg:p-9">
+            <p className="max-w-[32ch] text-pretty text-2xl text-night-ink tracking-[-0.025em] sm:text-3xl">
               {WORDS.slice(0, shown).map((word, index) => {
                 const isLast = index === shown - 1;
-                /* Interim text: the recogniser's best guess so far, not yet
-                   committed. Grey until the release commits it. */
                 const interim = !settled && isLast;
+
                 return (
                   <span
-                    className={cn(
-                      "transition-colors duration-200",
-                      interim ? "text-ink-subtle" : "text-ink"
-                    )}
+                    className={interim ? "text-night-muted" : "text-night-ink"}
                     key={word}
                   >
                     {word}{" "}
                   </span>
                 );
               })}
-              {/* Caret. Sits after the words while dictating, blinks when idle. */}
               <span
                 className={cn(
-                  "ml-px inline-block h-[1.1em] w-[2px] translate-y-[0.2em] rounded-full bg-ink/80",
+                  "ml-px inline-block h-[1.05em] w-[3px] translate-y-[0.16em] rounded-full bg-signal",
                   active &&
                     !recording &&
                     "animate-[caret_1.1s_steps(1)_infinite]"
@@ -144,31 +142,31 @@ export const DictationMock = () => {
           </div>
         </div>
 
-        {/* The chord, held down while recording. */}
-        <div className="mt-4 flex items-center gap-2">
-          <span
-            className={cn(
-              "raised inline-flex min-w-[1.75em] items-center justify-center rounded-md px-1.5 py-1 font-medium text-xs leading-none transition-all duration-150",
-              recording
-                ? "translate-y-px bg-surface-3 text-ink"
-                : "bg-surface-2 text-ink-muted"
-            )}
-          >
-            ⌥
-          </span>
-          <span
-            className={cn(
-              "raised inline-flex min-w-[1.75em] items-center justify-center rounded-md px-1.5 py-1 font-medium text-xs leading-none transition-all duration-150",
-              recording
-                ? "translate-y-px bg-surface-3 text-ink"
-                : "bg-surface-2 text-ink-muted"
-            )}
-          >
-            D
-          </span>
-          <span className="ml-1 text-ink-faint text-xs">
-            {recording ? "Listening" : "Hold to dictate"}
-          </span>
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            {["⌥", "D"].map((key) => (
+              <span
+                className={cn(
+                  "raised inline-flex min-w-8 items-center justify-center rounded-md bg-night-high px-2 py-1.5 font-medium text-sm",
+                  recording && "translate-y-px text-signal"
+                )}
+                key={key}
+              >
+                {key}
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "size-2.5 rounded-full bg-night-muted",
+                recording && "signal-pulse bg-signal"
+              )}
+            />
+            <p className="font-mono text-night-muted text-sm">
+              {recording ? "Listening" : "Hold to dictate"}
+            </p>
+          </div>
         </div>
       </div>
     </div>

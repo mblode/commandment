@@ -2,6 +2,12 @@
 
 macOS menu bar dictation app — BYO OpenAI API key. Swift 5 / SwiftUI + KeyboardShortcuts SPM.
 
+## Repository layout
+- `apps/macos` — macOS app source
+- `apps/macos-tests` — macOS test target
+- `apps/web` — Next.js landing page
+- `Commandment.xcodeproj` — Xcode project shared by the macOS app and tests
+
 ## Commands
 - `open Commandment.xcodeproj` — Open in Xcode
 - `xcodebuild -scheme Commandment -configuration Debug build -derivedDataPath /tmp/commandment-build` — Build from CLI

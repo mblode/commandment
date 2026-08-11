@@ -43,12 +43,12 @@
 			exceptions = (
 				01607F232D1898E10006DBE4 /* Exceptions for "Commandment" folder in "Commandment" target */,
 			);
-			path = Commandment;
+			path = apps/macos;
 			sourceTree = "<group>";
 		};
 		CC000000000000C1 /* CommandmentTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CommandmentTests;
+			path = apps/macos-tests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -348,18 +348,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
-				CODE_SIGN_ENTITLEMENTS = Commandment/Commandment.entitlements;
+				CODE_SIGN_ENTITLEMENTS = apps/macos/Commandment.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_ASSET_PATHS = "\"Commandment/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"apps/macos/Preview Content\"";
 				DEVELOPMENT_TEAM = 84FUKET6NJ;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Commandment/Info.plist;
+				INFOPLIST_FILE = apps/macos/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Commandment;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 Matthew Blode. All rights reserved.";
@@ -382,18 +382,18 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
-				CODE_SIGN_ENTITLEMENTS = Commandment/Commandment.entitlements;
+				CODE_SIGN_ENTITLEMENTS = apps/macos/Commandment.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_ASSET_PATHS = "\"Commandment/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"apps/macos/Preview Content\"";
 				DEVELOPMENT_TEAM = 84FUKET6NJ;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Commandment/Info.plist;
+				INFOPLIST_FILE = apps/macos/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Commandment;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 Matthew Blode. All rights reserved.";

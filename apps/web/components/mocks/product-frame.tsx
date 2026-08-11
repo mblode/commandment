@@ -34,7 +34,7 @@ export const ProductFrame = ({
   <figure className={cn("group/frame", className)} {...props}>
     <div
       aria-hidden="true"
-      className="raised-strong overflow-hidden rounded-2xl bg-surface-1"
+      className="product-shadow overflow-hidden rounded-[min(2vw,1.5rem)] bg-night outline-1 outline-ink/25 -outline-offset-1"
     >
       {children}
     </div>

@@ -20,7 +20,7 @@ Or [download the latest release](https://github.com/mblode/commandment/releases/
 
 Press `Option + Shift + D` to open Settings and paste your OpenAI key. It goes into the macOS Keychain.
 
-Then press `Option + D` anywhere, say a sentence, and press it again. The text appears where you were typing.
+Then hold `Option + D` anywhere, say a sentence, and let go. The text appears where you were typing.
 
 ## How it works
 
@@ -37,6 +37,19 @@ Then press `Option + D` anywhere, say a sentence, and press it again. The text a
 | `Option + Shift + D` | Open Settings |
 
 Both are rebindable in Settings.
+
+## Development
+
+The repository is a Turborepo with the macOS app in `apps/macos`, its tests in
+`apps/macos-tests`, and the Next.js site in `apps/web`.
+
+```bash
+npm install
+npm run web:dev
+```
+
+Run `npm run build` and `npm test` for the whole workspace, or use
+`npm run macos:build`, `npm run macos:test`, and `npm run web:build` for one app.
 
 ## Notes
 

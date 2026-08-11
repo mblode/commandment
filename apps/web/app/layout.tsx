@@ -96,8 +96,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  colorScheme: "dark",
-  themeColor: "#1c1c1e",
+  colorScheme: "light",
+  themeColor: "#f2efe8",
 };
 
 /*
@@ -189,7 +189,7 @@ export default async function RootLayout({
 
   return (
     <html
-      className={`dark ${glide.variable} ${glideItalic.variable} ${glideMono.variable}`}
+      className={`${glide.variable} ${glideItalic.variable} ${glideMono.variable}`}
       lang="en"
     >
       <head>

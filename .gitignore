@@ -18,6 +18,13 @@ Packages/
 *.dmg
 installer/dmg-background.png
 
+# JavaScript workspace
+node_modules/
+.turbo/
+
+# Local browser evidence
+.captain/
+
 # Secrets
 .env
 .vercel

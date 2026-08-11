@@ -2,13 +2,15 @@ import { FaqSection } from "@/components/faq-section";
 import { AnswerBlock } from "@/components/marketing/answer-block";
 import { ClosingCta } from "@/components/marketing/closing-cta";
 import { ComparisonTable } from "@/components/marketing/comparison-table";
+import { FactList } from "@/components/marketing/fact-list";
 import { Hero } from "@/components/marketing/hero";
 import { HowItWorks } from "@/components/marketing/how-it-works";
 import { ProseSection } from "@/components/marketing/prose-section";
 import { SiteFooter } from "@/components/site-footer";
+import { EdgeBlur } from "@/components/ui/edge-blur";
 import { Container } from "@/components/ui/section";
 import { ZoneBreadcrumb } from "@/components/zone-breadcrumb";
-import { AUDIO_ROUTE } from "@/lib/content";
+import { AUDIO_ROUTE, HERO, PROOF } from "@/lib/content";
 import { getLatestRelease } from "@/lib/release";
 
 /**
@@ -30,28 +32,23 @@ export default async function Page() {
   const { downloadUrl, fileSizeMB, version } = await getLatestRelease();
 
   return (
-    <div className="isolate flex min-h-dvh flex-col bg-canvas font-sans">
-      {/* Root page only, and matched word for word by the BreadcrumbList in
-          lib/config.ts. Google treats a mismatch between the visible trail and
-          the markup as an error, so the two change together. */}
-      <Container className="pt-8">
-        <ZoneBreadcrumb product="Commandment" />
-      </Container>
+    <div className="paper-field isolate flex min-h-dvh flex-col bg-canvas font-sans">
+      <header className="material-header sticky top-0 z-50 bg-canvas/78 backdrop-blur-xl backdrop-saturate-150">
+        <Container className="flex h-16 items-center justify-between gap-6">
+          <ZoneBreadcrumb product="Commandment" />
+          <p className="font-mono text-ink-subtle text-sm">
+            {HERO.shortcutLabel}
+          </p>
+        </Container>
+        <EdgeBlur className="top-full" />
+      </header>
 
       <main className="flex-1">
-        {/* The glow is a light source above the fold, not a wash behind the
-            headline. Pointer-events-none and behind everything. */}
-        <div className="relative">
-          <div
-            aria-hidden="true"
-            className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[36rem]"
-          />
-          <Hero
-            downloadUrl={downloadUrl}
-            fileSizeMB={fileSizeMB}
-            version={version}
-          />
-        </div>
+        <Hero
+          downloadUrl={downloadUrl}
+          fileSizeMB={fileSizeMB}
+          version={version}
+        />
 
         <AnswerBlock />
         <HowItWorks />
@@ -61,6 +58,7 @@ export default async function Page() {
           id={AUDIO_ROUTE.id}
           secondaryId={AUDIO_ROUTE.accessibilityId}
         />
+        <FactList facts={PROOF.rows} heading={PROOF.heading} id="proof" />
         <ComparisonTable />
         <FaqSection />
         <ClosingCta downloadUrl={downloadUrl} version={version} />

@@ -1,0 +1,12 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "cache": false,
+      "outputs": []
+    },
+    "test": {
+      "cache": false
+    }
+  }
+}
