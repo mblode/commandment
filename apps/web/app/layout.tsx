@@ -159,6 +159,7 @@ const structuredData = (version: string) => ({
         // is schema.org-legal but Semrush Site Audit flags it as invalid markup.
         price: 0,
         priceCurrency: "USD",
+        url: siteConfig.url,
       },
       operatingSystem: "macOS 15.2",
       publisher: { "@id": orgId },
