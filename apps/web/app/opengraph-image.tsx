@@ -3,6 +3,8 @@ import {
   OG_SIZE,
   renderZoneOgImage,
 } from "@/app/og-image-shared";
+import { OgLogo } from "@/app/og-logo";
+
 import { siteConfig } from "@/lib/config";
 
 export const contentType = OG_CONTENT_TYPE;
@@ -15,9 +17,9 @@ export const alt = "Commandment: voice to text for macOS";
  */
 export default function OpengraphImage() {
   return renderZoneOgImage({
-    badge: "COMMANDMENT",
-    eyebrow: "blode.co/commandment",
-    subtitle: "Talk instead of typing.",
+    background: "#1c1c1e",
+    color: "#ffffff",
+    logo: <OgLogo />,
     title: siteConfig.name,
   });
 }
