@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * diffhub's version of this renders modifier glyphs from `blode-icons-react`.
  * That is the right call there because it already depends on the package; here
  * it would mean adding an icon library to a two-section marketing page for the
- * sake of two characters. `⌥` and `⇧` are ordinary Unicode and Glide draws them
+ * sake of two characters. `⌥` and `⇧` are ordinary Unicode and Inter draws them
  * correctly, so they are text.
  *
  * `w-fit min-w-[1.75em]` rather than a fixed width: a single letter and `esc`
