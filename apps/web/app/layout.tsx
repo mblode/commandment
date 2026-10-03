@@ -1,6 +1,6 @@
 import { Agentation } from "agentation";
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
+import { Geist_Mono, Inter } from "next/font/google";
 import { JsonLd } from "@/components/json-ld";
 import {
   appId,
@@ -17,40 +17,21 @@ import { getLatestRelease } from "@/lib/release";
 import "./globals.css";
 
 /**
- * Roman and italic are declared separately so only the roman is preloaded.
- *
- * `next/font` emits a `<link rel="preload">` for every face in a call, and
- * `preload` is a per-call option, not per-face. Declared together, the italic
- * was 105KB fetched at the highest priority to render zero glyphs — this page
- * contains no emphasis at all — while competing for the same connection as the
- * roman, which *is* the LCP font. Every LCP element on this fleet is text, so
- * that contention is not theoretical.
- *
- * Deleting the italic outright would have been simpler and is the wrong trade:
- * the browser then synthesises an oblique the first time anyone writes `<em>`,
- * and faked italic is exactly the kind of defect the house type rules exist to
- * stop. So it stays, real and drawn, one priority tier down — see the `em, i`
- * rule in globals.css that binds it.
+ * Both styles are declared in one call so the family covers `<em>`/`<i>`
+ * without the browser synthesising a fake oblique — see the `em, i` rule in
+ * globals.css that relies on it.
  */
-const glide = localFont({
+const inter = Inter({
   display: "swap",
-  src: [{ path: "./fonts/glide-variable.woff2", style: "normal" }],
-  variable: "--font-glide",
-  weight: "100 950",
-});
-const glideItalic = localFont({
-  display: "swap",
-  preload: false,
-  src: [{ path: "./fonts/glide-variable-italic.woff2", style: "italic" }],
-  variable: "--font-glide-italic",
-  weight: "100 950",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
-const glideMono = localFont({
+const geistMono = Geist_Mono({
   display: "swap",
-  src: "./fonts/glide-mono.woff2",
-  variable: "--font-glide-mono",
-  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
 });
 
 export const metadata: Metadata = {
@@ -187,7 +168,7 @@ export default async function RootLayout({
 
   return (
     <html
-      className={`${glide.variable} ${glideItalic.variable} ${glideMono.variable}`}
+      className={`${inter.variable} ${geistMono.variable}`}
       lang="en-AU"
     >
       <head>
