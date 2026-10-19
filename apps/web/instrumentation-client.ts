@@ -74,6 +74,7 @@ if (apiHost && !isLocalHost()) {
     api_host: apiHost,
     before_send: (event) => {
       if (event && isNoisyException(event)) return null;
+      if (event) event.properties.project = "commandment";
       return event;
     },
     defaults: "2026-05-30",
