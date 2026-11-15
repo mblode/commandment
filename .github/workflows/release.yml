@@ -69,7 +69,7 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
       - name: Import code-signing certificate
-        uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
+        uses: apple-actions/import-codesign-certs@288b8ec97b82c66b6f2a6baaf7acc8dfbcbe331c # v7.2.0
         with:
           p12-file-base64: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
           p12-password: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
@@ -152,7 +152,7 @@ jobs:
         run: xcrun stapler staple "/tmp/commandment-build/Commandment-${{ steps.version.outputs.VERSION }}.dmg"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           name: Commandment ${{ steps.version.outputs.VERSION }}
           body: |
